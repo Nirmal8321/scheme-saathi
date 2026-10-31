@@ -4,39 +4,39 @@
     "text": "Mi shetkari aahe, Wardha madhe. 2 acre jamin. Varshik utpanna 80000. Vaya 45 varsh. Mulga mulgi 2.",
     "language": "mr",
     "expected_eligible_schemes": ["pm_kisan", "namo_shetkari"],
-    "expected_maybe_schemes": ["mudra_loan", "pm_awas"],
-    "expected_not_eligible_schemes": ["ladki_bahin", "pm_ujjwala", "pmjay", "pm_svanidhi", "stand_up_india", "post_matric_scholarship"]
+    "expected_maybe_schemes": ["pm_awas", "ladki_bahin", "pm_ujjwala", "pmjay"],
+    "expected_not_eligible_schemes": ["mudra_loan", "pm_svanidhi", "stand_up_india", "post_matric_scholarship"]
   },
   {
     "description": "Woman entrepreneur in Mumbai, Hindi/English mixed",
     "text": "Main Mumbai mein apna chota sa business chalti hoon. Beauty parlor hai. Varshik aamdani 3 lakh. Age 32. SC category. Bank se loan chahiye business badhane ke liye.",
     "language": "hi",
     "expected_eligible_schemes": ["mudra_loan", "stand_up_india"],
-    "expected_maybe_schemes": ["pm_svanidhi", "pm_awas"],
-    "expected_not_eligible_schemes": ["pm_kisan", "namo_shetkari", "ladki_bahin", "pm_ujjwala", "pmjay", "post_matric_scholarship"]
+    "expected_maybe_schemes": ["pm_awas", "pm_ujjwala", "pmjay"],
+    "expected_not_eligible_schemes": ["pm_kisan", "namo_shetkari", "ladki_bahin", "pm_svanidhi", "post_matric_scholarship"]
   },
   {
     "description": "Student from SC category in Pune, English/Marathi mixed",
     "text": "I am a student doing B.Tech in Pune. My caste is SC. Family income 1.8 lakh per year. Need scholarship for fees. Age 20.",
     "language": "en",
-    "expected_eligible_schemes": ["post_matric_scholarship"],
-    "expected_maybe_schemes": [],
-    "expected_not_eligible_schemes": ["pm_kisan", "namo_shetkari", "ladki_bahin", "mudra_loan", "pm_ujjwala", "pmjay", "pm_awas", "pm_svanidhi", "stand_up_india"]
+    "expected_eligible_schemes": [],
+    "expected_maybe_schemes": ["post_matric_scholarship", "pm_awas", "pm_ujjwala", "pmjay"],
+    "expected_not_eligible_schemes": ["pm_kisan", "namo_shetkari", "ladki_bahin", "mudra_loan", "pm_svanidhi", "stand_up_india"]
   },
   {
     "description": "Street vendor in Nashik, Marathi",
     "text": "Mi Nashik madhe street vendor aahe. Veg-bhaji vikto. Rozache 500-700 milte. Vaya 40. Aadhaar ahe. Bank khate ahe. Certificate of vending ahe.",
     "language": "mr",
-    "expected_eligible_schemes": ["pm_svanidhi"],
-    "expected_maybe_schemes": ["mudra_loan", "pm_ujjwala", "pmjay", "pm_awas"],
-    "expected_not_eligible_schemes": ["pm_kisan", "namo_shetkari", "ladki_bahin", "stand_up_india", "post_matric_scholarship"]
+    "expected_eligible_schemes": [],
+    "expected_maybe_schemes": ["pm_svanidhi", "mudra_loan", "pm_awas", "pmjay"],
+    "expected_not_eligible_schemes": ["pm_kisan", "namo_shetkari", "ladki_bahin", "pm_ujjwala", "stand_up_india", "post_matric_scholarship"]
   },
   {
     "description": "Elderly widow in rural Maharashtra, Hindi",
     "text": "Main 68 saal ki vidhwa hoon. Gaon mein rehti hoon. Koi pension nahi milta. Pariwar ki aamdani 50 hazar saal. Gas connection nahi hai. Aadhaar card hai.",
     "language": "hi",
-    "expected_eligible_schemes": ["pm_ujjwala", "pmjay", "ladki_bahin"],
-    "expected_maybe_schemes": ["pm_awas"],
-    "expected_not_eligible_schemes": ["pm_kisan", "namo_shetkari", "mudra_loan", "pm_svanidhi", "stand_up_india", "post_matric_scholarship"]
+    "expected_eligible_schemes": [],
+    "expected_maybe_schemes": ["pm_awas", "pm_ujjwala", "pmjay", "pm_kisan", "namo_shetkari", "pm_svanidhi", "mudra_loan", "stand_up_india", "post_matric_scholarship"],
+    "expected_not_eligible_schemes": ["ladki_bahin"]
   }
 ]

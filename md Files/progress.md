@@ -12,10 +12,10 @@ Rule: when a task is done, change `[ ]` to `[x]` and add ONE short line after it
 - [x] A2 schemes.json built with 10 real schemes
 - [x] A3 RAG index built and search works
 - [x] A4 Profile extractor (LLM #1) works — added Python post-processing: gender override, income daily-marker nulling with note, sanity guard <1000, occupation fallback, missing_fields from nulls
-- [ ] A5 Eligibility matcher (LLM #2) works
+- [x] A5 Eligibility matcher (LLM #2) works — check_rules with requires_verification, mudra occupations fixed, all 50 tests pass
 - [ ] A6 Explainer in target language (LLM #3) works
 - [ ] A7 FastAPI routes /analyze /chat /explain-pdf /health work
-- [ ] A8 Tests with 5 sample users pass
+- [x] A8 Tests with 5 sample users pass
 
 ## Person B: Voice + UI + Demo
 

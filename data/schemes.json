@@ -28,7 +28,8 @@
       "occupations": ["farmer", "agriculturist"],
       "needs_land": true,
       "categories": []
-    }
+    },
+    "requires_verification": []
   },
   {
     "id": "namo_shetkari",
@@ -58,7 +59,8 @@
       "occupations": ["farmer", "agriculturist"],
       "needs_land": true,
       "categories": []
-    }
+    },
+    "requires_verification": []
   },
   {
     "id": "ladki_bahin",
@@ -89,7 +91,8 @@
       "occupations": [],
       "needs_land": false,
       "categories": ["SC", "ST", "OBC", "General"]
-    }
+    },
+    "requires_verification": ["family_income_proof"]
   },
   {
     "id": "mudra_loan",
@@ -117,10 +120,11 @@
       "max_income": null,
       "states": [],
       "gender": null,
-      "occupations": ["entrepreneur", "business_owner", "self_employed", "trader", "manufacturer", "service_provider"],
+      "occupations": ["entrepreneur", "business_owner", "self_employed", "trader", "manufacturer", "service_provider", "street_vendor", "shopkeeper", "artisan", "small_business"],
       "needs_land": false,
       "categories": ["SC", "ST", "OBC", "women", "minority"]
-    }
+    },
+    "requires_verification": []
   },
   {
     "id": "pm_ujjwala",
@@ -150,7 +154,8 @@
       "occupations": [],
       "needs_land": false,
       "categories": ["SC", "ST", "OBC", "AAY", "forest_dweller", "tea_garden_worker", "migrant"]
-    }
+    },
+    "requires_verification": ["bpl_status", "existing_lpg_connection"]
   },
   {
     "id": "pmjay",
@@ -180,7 +185,8 @@
       "occupations": [],
       "needs_land": false,
       "categories": ["SC", "ST", "vulnerable", "destitute", "manual_scavenger", "bonded_labour", "primitive_tribal", "urban_poor"]
-    }
+    },
+    "requires_verification": ["secc_listing_or_income_proof"]
   },
   {
     "id": "pm_awas",
@@ -212,7 +218,8 @@
       "occupations": [],
       "needs_land": false,
       "categories": ["EWS", "LIG", "MIG", "SC", "ST", "OBC", "minority", "women"]
-    }
+    },
+    "requires_verification": ["house_ownership"]
   },
   {
     "id": "pm_svanidhi",
@@ -241,7 +248,8 @@
       "occupations": ["street_vendor", "hawker", "pavement_vendor", "mobile_vendor"],
       "needs_land": false,
       "categories": ["SC", "ST", "OBC", "women", "minority", "PwD"]
-    }
+    },
+    "requires_verification": ["vending_certificate"]
   },
   {
     "id": "stand_up_india",
@@ -271,7 +279,8 @@
       "occupations": ["entrepreneur", "business_owner"],
       "needs_land": false,
       "categories": ["SC", "ST", "women"]
-    }
+    },
+    "requires_verification": []
   },
   {
     "id": "post_matric_scholarship",
@@ -302,6 +311,7 @@
       "occupations": ["student"],
       "needs_land": false,
       "categories": ["SC", "ST", "OBC", "EBC", "minority"]
-    }
+    },
+    "requires_verification": ["income_certificate"]
   }
 ]
