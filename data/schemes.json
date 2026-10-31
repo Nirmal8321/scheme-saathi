@@ -1,1 +1,307 @@
-"""Scheme data storage - structured scheme information for RAG."""
+[
+  {
+    "id": "pm_kisan",
+    "name": "PM-KISAN",
+    "level": "central",
+    "state": null,
+    "category": "agriculture",
+    "benefit": "Rs 6,000 per year in 3 installments",
+    "eligibility": [
+      "Landholding farmer family with cultivable land",
+      "Excludes income tax payers",
+      "Excludes institutional landholders",
+      "Excludes retired pensioners with monthly pension > Rs 10,000",
+      "Excludes professionals (doctors, engineers, lawyers, CAs, architects)",
+      "Excludes former and present constitutional post holders"
+    ],
+    "documents": ["Aadhaar", "7/12 land record (or equivalent)", "Bank passbook"],
+    "how_to_apply": "Register at pmkisan.gov.in or via nearest CSC center",
+    "official_link": "https://pmkisan.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Pradhan Mantri Kisan Samman Nidhi (PM-KISAN) is a central government scheme launched in 2019 to provide income support to all landholding farmer families across India. Under this scheme, eligible farmer families receive Rs 6,000 per year in three equal installments of Rs 2,000 each, directly transferred to their bank accounts. The scheme aims to supplement the financial needs of farmers for procurement of inputs to ensure proper crop health and appropriate yields. A farmer family is defined as husband, wife, and minor children who own cultivable land. The scheme excludes institutional landholders, income tax payers, retired pensioners receiving monthly pension above Rs 10,000, professionals like doctors, engineers, lawyers, chartered accountants, and architects, and former/present holders of constitutional posts. Registration can be done through the official portal pmkisan.gov.in or at Common Service Centers (CSC) across the country.",
+    "rules": {
+      "min_age": null,
+      "max_age": null,
+      "max_income": null,
+      "states": [],
+      "gender": null,
+      "occupations": ["farmer", "agriculturist"],
+      "needs_land": true,
+      "categories": []
+    }
+  },
+  {
+    "id": "namo_shetkari",
+    "name": "Namo Shetkari Mahasanman Nidhi",
+    "level": "state",
+    "state": "Maharashtra",
+    "category": "agriculture",
+    "benefit": "Rs 6,000 per year additional to PM-KISAN",
+    "eligibility": [
+      "Resident farmer of Maharashtra",
+      "Must be registered under PM-KISAN",
+      "Must have valid land records in Maharashtra",
+      "Excludes income tax payers",
+      "Excludes institutional landholders"
+    ],
+    "documents": ["Aadhaar", "7/12 land record (Maharashtra)", "Bank passbook", "PM-KISAN registration proof"],
+    "how_to_apply": "Apply online at mahadbt.maharashtra.gov.in or via nearest CSC center",
+    "official_link": "https://mahadbt.maharashtra.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Namo Shetkari Mahasanman Nidhi is a Maharashtra state government scheme launched to provide additional financial assistance to farmers already registered under the central PM-KISAN scheme. Eligible farmers in Maharashtra receive Rs 6,000 per year over and above the PM-KISAN benefit of Rs 6,000, totaling Rs 12,000 annually. The scheme is implemented through the MahaDBT portal. To qualify, the applicant must be a resident farmer of Maharashtra, registered under PM-KISAN, and possess valid land records (7/12 extract) in the state. The same exclusion criteria as PM-KISAN apply - income tax payers, institutional landholders, retired pensioners with monthly pension above Rs 10,000, and professionals are excluded. The benefit is disbursed in three installments of Rs 2,000 each directly to the farmer's bank account linked with Aadhaar.",
+    "rules": {
+      "min_age": null,
+      "max_age": null,
+      "max_income": null,
+      "states": ["Maharashtra"],
+      "gender": null,
+      "occupations": ["farmer", "agriculturist"],
+      "needs_land": true,
+      "categories": []
+    }
+  },
+  {
+    "id": "ladki_bahin",
+    "name": "Ladki Bahin (Majhi Ladki Bahin Yojana)",
+    "level": "state",
+    "state": "Maharashtra",
+    "category": "women_welfare",
+    "benefit": "Rs 1,500 per month (Rs 18,000 per year)",
+    "eligibility": [
+      "Woman resident of Maharashtra",
+      "Age between 21 and 65 years",
+      "Annual family income not exceeding Rs 2.5 lakh",
+      "Not receiving similar pension/benefit from other government schemes",
+      "Not a government employee or income tax payer",
+      "Must have bank account linked with Aadhaar"
+    ],
+    "documents": ["Aadhaar", "Residence proof (domicile/birth certificate)", "Income certificate", "Bank passbook", "Age proof"],
+    "how_to_apply": "Apply online at ladakibahin.maharashtra.gov.in or via nearest CSC center",
+    "official_link": "https://ladakibahin.maharashtra.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Majhi Ladki Bahin Yojana (My Dear Sister Scheme) is a flagship Maharashtra government scheme launched in 2024 to provide direct financial assistance to women from economically weaker sections. Under this scheme, eligible women residents of Maharashtra aged 21 to 65 years receive Rs 1,500 per month (Rs 18,000 per year) directly in their bank accounts. The scheme aims to empower women financially and improve their social status. Eligibility criteria include: annual family income not exceeding Rs 2.5 lakh, not receiving similar pension or benefit from any other government scheme, not being a government employee or income tax payer, and having a bank account linked with Aadhaar. The scheme requires e-KYC verification. Applications can be submitted online through the official portal ladakibahin.maharashtra.gov.in or at Common Service Centers. The benefit is transferred monthly subject to e-KYC compliance.",
+    "rules": {
+      "min_age": 21,
+      "max_age": 65,
+      "max_income": 250000,
+      "states": ["Maharashtra"],
+      "gender": "female",
+      "occupations": [],
+      "needs_land": false,
+      "categories": ["SC", "ST", "OBC", "General"]
+    }
+  },
+  {
+    "id": "mudra_loan",
+    "name": "Mudra Loan (PM Mudra Yojana)",
+    "level": "central",
+    "state": null,
+    "category": "credit_finance",
+    "benefit": "Up to Rs 10 lakh loan (Shishu: up to 50K, Kishor: 50K-5L, Tarun: 5L-10L)",
+    "eligibility": [
+      "Non-corporate, non-farm small/micro enterprises",
+      "Indian citizen",
+      "Age 18 years or above",
+      "Business plan for income generation",
+      "Not a defaulter to any bank/financial institution",
+      "Manufacturing, trading, or services sector (non-farm)"
+    ],
+    "documents": ["Aadhaar", "PAN", "Business address proof", "Business identity proof", "Bank statements (6 months)", "Income tax returns (if applicable)", "Quotations for machinery/equipment (if applicable)"],
+    "how_to_apply": "Apply at any bank branch, NBFC, or MFIs; online at mudra.org.in",
+    "official_link": "https://mudra.org.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Pradhan Mantri Mudra Yojana (PMMY) was launched in 2015 to provide collateral-free loans up to Rs 10 lakh to non-corporate, non-farm small and micro enterprises for income-generating activities. The scheme offers three loan categories: Shishu (up to Rs 50,000), Kishor (Rs 50,000 to Rs 5 lakh), and Tarun (Rs 5 lakh to Rs 10 lakh). Loans are provided through banks, NBFCs, and MFIs without any collateral or guarantor. The interest rates are competitive and the loans can be used for working capital, purchase of machinery/equipment, vehicles for commercial use, etc. Eligible applicants must be Indian citizens aged 18 years or above with a viable business plan in manufacturing, trading, or services sector (excluding agriculture). They must not be defaulters to any bank or financial institution. The scheme specifically targets SC/ST, OBC, women, and minority entrepreneurs. Applications can be submitted at any bank branch or online through the Mudra portal.",
+    "rules": {
+      "min_age": 18,
+      "max_age": null,
+      "max_income": null,
+      "states": [],
+      "gender": null,
+      "occupations": ["entrepreneur", "business_owner", "self_employed", "trader", "manufacturer", "service_provider"],
+      "needs_land": false,
+      "categories": ["SC", "ST", "OBC", "women", "minority"]
+    }
+  },
+  {
+    "id": "pm_ujjwala",
+    "name": "PM Ujjwala Yojana (PMUY)",
+    "level": "central",
+    "state": null,
+    "category": "energy",
+    "benefit": "Free LPG connection with first refill and stove (subsidy on subsequent refills)",
+    "eligibility": [
+      "Adult woman (18+ years)",
+      "Belongs to BPL household (SECC 2011 list) or identified categories",
+      "No existing LPG connection in household",
+      "Categories: SC/ST households, PMAY-G beneficiaries, AAY beneficiaries, forest dwellers, most backward classes, tea garden workers, island/river island residents",
+      "Annual household income below specified threshold"
+    ],
+    "documents": ["Aadhaar", "Ration card / BPL certificate", "Bank passbook", "Age proof", "Residence proof"],
+    "how_to_apply": "Apply at nearest LPG distributor or online at pmuy.gov.in",
+    "official_link": "https://pmuy.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Pradhan Mantri Ujjwala Yojana (PMUY) was launched in 2016 to provide free LPG connections to women from Below Poverty Line (BPL) households. The scheme aims to safeguard the health of women and children by providing clean cooking fuel, reducing indoor air pollution from traditional biomass fuels. Under PMUY 2.0 (launched 2021), the scope was expanded to include migrant families and additional categories. Eligible beneficiaries receive a deposit-free LPG connection with the first refill and stove (hotplate) free of cost. The scheme covers adult women (18+ years) from BPL households identified through SECC 2011 data, or belonging to specific categories: SC/ST households, PMAY-G beneficiaries, Antyodaya Anna Yojana (AAY) beneficiaries, forest dwellers, most backward classes, tea garden workers, and residents of islands/river islands. No existing LPG connection should be present in the household. The oil marketing companies (IOCL, BPCL, HPCL) implement the scheme through their distributor network. Subsequent refills receive targeted subsidy.",
+    "rules": {
+      "min_age": 18,
+      "max_age": null,
+      "max_income": null,
+      "states": [],
+      "gender": "female",
+      "occupations": [],
+      "needs_land": false,
+      "categories": ["SC", "ST", "OBC", "AAY", "forest_dweller", "tea_garden_worker", "migrant"]
+    }
+  },
+  {
+    "id": "pmjay",
+    "name": "Ayushman Bharat PM-JAY",
+    "level": "central",
+    "state": null,
+    "category": "health",
+    "benefit": "Rs 5 lakh per family per year for secondary/tertiary hospitalization",
+    "eligibility": [
+      "Families identified in SECC 2011 database (deprivation criteria D1-D7)",
+      "Automatically includes: families without shelter, destitute, manual scavengers, primitive tribal groups, legally released bonded labour",
+      "Urban categories: rag pickers, beggars, domestic workers, street vendors, construction workers, transport workers, sanitation workers",
+      "No cap on family size or age",
+      "Pre-existing conditions covered from day 1"
+    ],
+    "documents": ["Aadhaar", "Ration card / family ID", "Any government-issued ID"],
+    "how_to_apply": "Check eligibility at beneficiary.nha.gov.in or via PMJAY kiosk at empaneled hospitals",
+    "official_link": "https://pmjay.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) is the world's largest government-funded health assurance scheme, launched in 2018. It provides health cover of Rs 5 lakh per family per year for secondary and tertiary care hospitalization to over 10.74 crore poor and vulnerable families (approximately 50 crore beneficiaries). Eligibility is based on the Socio-Economic Caste Census (SECC) 2011 database using deprivation criteria D1 to D7 for rural areas and 11 occupational categories for urban areas. Automatically included are families without shelter, destitute, manual scavengers, primitive tribal groups, and legally released bonded labourers. Urban categories include rag pickers, beggars, domestic workers, street vendors, cobblers, sanitation workers, construction workers, and transport workers. There is no cap on family size, age, or gender. Pre-existing conditions are covered from day one. The scheme is cashless and paperless at empaneled public and private hospitals. Beneficiaries can check eligibility on the PM-JAY portal or at help desks in empaneled hospitals.",
+    "rules": {
+      "min_age": null,
+      "max_age": null,
+      "max_income": null,
+      "states": [],
+      "gender": null,
+      "occupations": [],
+      "needs_land": false,
+      "categories": ["SC", "ST", "vulnerable", "destitute", "manual_scavenger", "bonded_labour", "primitive_tribal", "urban_poor"]
+    }
+  },
+  {
+    "id": "pm_awas",
+    "name": "PM Awas Yojana (PMAY)",
+    "level": "central",
+    "state": null,
+    "category": "housing",
+    "benefit": "Subsidy on home loan interest (CLSS): EWS/LIG up to Rs 2.67 lakh, MIG up to Rs 2.3 lakh",
+    "eligibility": [
+      "EWS: Annual household income up to Rs 3 lakh",
+      "LIG: Annual household income Rs 3-6 lakh",
+      "MIG-I: Annual household income Rs 6-12 lakh",
+      "MIG-II: Annual household income Rs 12-18 lakh",
+      "Beneficiary family should not own a pucca house anywhere in India",
+      "Adult female ownership/co-ownership mandatory for EWS/LIG",
+      "Property location: all statutory towns (Urban) / Gram Panchayats (Gramin)"
+    ],
+    "documents": ["Aadhaar", "PAN", "Income proof", "Property documents", "Bank statements", "NOC from builder/society"],
+    "how_to_apply": "Urban: pmaymis.gov.in or via ULB/CSC; Gramin: pmayg.dord.gov.in or via Gram Panchayat",
+    "official_link": "https://pmaymis.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Pradhan Mantri Awas Yojana (PMAY) aims to provide 'Housing for All' through two components: PMAY-Urban (PMAY-U) and PMAY-Gramin (PMAY-G). Under PMAY-U, the Credit Linked Subsidy Scheme (CLSS) provides interest subsidy on home loans: EWS (income up to Rs 3 lakh) and LIG (income Rs 3-6 lakh) get 6.5% subsidy on loans up to Rs 6 lakh (max subsidy Rs 2.67 lakh); MIG-I (income Rs 6-12 lakh) gets 4% on loans up to Rs 9 lakh (max Rs 2.35 lakh); MIG-II (income Rs 12-18 lakh) gets 3% on loans up to Rs 12 lakh (max Rs 2.3 lakh). The beneficiary family must not own a pucca house anywhere in India. Adult female ownership or co-ownership is mandatory for EWS/LIG categories. PMAY-G provides direct assistance of Rs 1.2 lakh (plain) or Rs 1.3 lakh (hilly/difficult) for construction of pucca houses with basic amenities. Selection is based on SECC 2011 data and Gram Sabha verification. Both components promote convergence with other schemes like Ujjwala, Swachh Bharat, Saubhagya, etc.",
+    "rules": {
+      "min_age": 18,
+      "max_age": null,
+      "max_income": 1800000,
+      "states": [],
+      "gender": null,
+      "occupations": [],
+      "needs_land": false,
+      "categories": ["EWS", "LIG", "MIG", "SC", "ST", "OBC", "minority", "women"]
+    }
+  },
+  {
+    "id": "pm_svanidhi",
+    "name": "PM SVANidhi",
+    "level": "central",
+    "state": null,
+    "category": "credit_finance",
+    "benefit": "Working capital loan: 1st tranche Rs 10,000, 2nd tranche Rs 20,000, 3rd tranche Rs 50,000; RuPay debit card; interest subsidy 7%",
+    "eligibility": [
+      "Street vendor vending in urban areas as on or before March 24, 2020",
+      "Possesses Certificate of Vending (CoV) or Identity Card issued by ULB",
+      "Vendors identified in ULB survey but not issued CoV (Letter of Recommendation from ULB)",
+      "Vendors from surrounding peri-urban/rural areas vending in urban areas"
+    ],
+    "documents": ["Aadhaar", "Certificate of Vending / Identity Card / Letter of Recommendation", "Bank passbook", "Mobile number"],
+    "how_to_apply": "Apply online at pmsvanidhi.mohua.gov.in or via nearest CSC / bank branch",
+    "official_link": "https://pmsvanidhi.mohua.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "PM Street Vendor's AtmaNirbhar Nidhi (PM SVANidhi) was launched in 2020 as a special micro-credit facility for street vendors to resume their livelihoods affected by COVID-19. The scheme provides working capital loans in three tranches: 1st tranche of Rs 10,000, 2nd tranche of Rs 20,000 (on repayment of 1st), and 3rd tranche of Rs 50,000 (on repayment of 2nd). An interest subsidy of 7% per annum is provided on prompt repayment, effectively making the loan interest-free. Beneficiaries also receive a RuPay debit card for digital transactions and cashback incentives. Eligible vendors are those vending in urban areas as on or before March 24, 2020, who possess a Certificate of Vending (CoV) or Identity Card issued by the Urban Local Body (ULB). Vendors identified in ULB surveys but not issued CoV can get a Letter of Recommendation from the ULB. Vendors from surrounding peri-urban/rural areas vending in urban areas are also eligible. The scheme is implemented through lending institutions (banks, NBFCs, MFIs) and facilitated by ULBs.",
+    "rules": {
+      "min_age": 18,
+      "max_age": null,
+      "max_income": null,
+      "states": [],
+      "gender": null,
+      "occupations": ["street_vendor", "hawker", "pavement_vendor", "mobile_vendor"],
+      "needs_land": false,
+      "categories": ["SC", "ST", "OBC", "women", "minority", "PwD"]
+    }
+  },
+  {
+    "id": "stand_up_india",
+    "name": "Stand-Up India",
+    "level": "central",
+    "state": null,
+    "category": "credit_finance",
+    "benefit": "Bank loan between Rs 10 lakh and Rs 1 crore for greenfield enterprises",
+    "eligibility": [
+      "SC/ST and/or women entrepreneurs aged 18+ years",
+      "Greenfield project (first-time venture) in manufacturing, services, or trading sector",
+      "Non-individual enterprises: at least 51% shareholding by SC/ST/women",
+      "Borrower should not be in default to any bank/financial institution",
+      "Project cost covered up to 75% (25% margin money)"
+    ],
+    "documents": ["Aadhaar", "PAN", "Caste certificate (for SC/ST)", "Business plan/project report", "Proof of premises", "Bank statements", "Income tax returns", "Margin money proof"],
+    "how_to_apply": "Apply through bank branch or online at standupindia-scheme.com / myscheme.gov.in",
+    "official_link": "https://standupindia-scheme.com",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "Stand-Up India Scheme was launched in 2016 to promote entrepreneurship among women and SC/ST communities. It facilitates bank loans between Rs 10 lakh and Rs 1 crore for setting up greenfield enterprises in manufacturing, services, or trading sectors. The scheme is implemented through all Scheduled Commercial Banks. Eligible borrowers are SC/ST and/or women entrepreneurs aged 18 years and above. For non-individual enterprises (partnership/private limited), at least 51% shareholding and controlling stake must be held by SC/ST/women entrepreneurs. The project must be a greenfield venture (first-time enterprise). The loan covers up to 75% of project cost with 25% margin money from borrower. Interest rate is capped at base rate (MCLR) + 3% + tenor premium. Repayment period up to 7 years with maximum moratorium of 18 months. The borrower must not be a defaulter to any bank/financial institution. Handholding support is provided through LDM, DIC, and other agencies for project preparation, registration, and clearances.",
+    "rules": {
+      "min_age": 18,
+      "max_age": null,
+      "max_income": null,
+      "states": [],
+      "gender": null,
+      "occupations": ["entrepreneur", "business_owner"],
+      "needs_land": false,
+      "categories": ["SC", "ST", "women"]
+    }
+  },
+  {
+    "id": "post_matric_scholarship",
+    "name": "Post-Matric Scholarship",
+    "level": "central",
+    "state": null,
+    "category": "education",
+    "benefit": "Maintenance allowance, tuition fee reimbursement, book allowance, disability allowance (varies by state/category)",
+    "eligibility": [
+      "Student belonging to SC/ST/OBC/EBC/Minority category",
+      "Studying in Class 11 or above (post-matriculation level)",
+      "Annual family income ceiling: SC/ST Rs 2.5 lakh, OBC/EBC Rs 1-2.5 lakh (varies by state), Minority Rs 2 lakh",
+      "Not receiving any other scholarship for the same course",
+      "Attendance minimum 75%",
+      "Passed previous examination"
+    ],
+    "documents": ["Aadhaar", "Caste/category certificate", "Income certificate", "Domicile certificate", "Previous year marksheet", "Admission receipt/fee structure", "Bank passbook", "Bonafide certificate from institution"],
+    "how_to_apply": "Apply online at scholarships.gov.in (National Scholarship Portal) or state portal (e.g., mahadbt.maharashtra.gov.in)",
+    "official_link": "https://scholarships.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Post-Matric Scholarship Scheme provides financial assistance to students belonging to Scheduled Castes (SC), Scheduled Tribes (ST), Other Backward Classes (OBC), Economically Backward Classes (EBC), and Minority communities for pursuing studies at post-matriculation level (Class 11 onwards, including undergraduate, postgraduate, PhD, and professional/technical courses). The scholarship covers maintenance allowance, tuition fee reimbursement, book allowance, and additional allowances for students with disabilities. Income ceilings vary by category and state: SC/ST typically up to Rs 2.5 lakh per annum, OBC/EBC up to Rs 1-2.5 lakh (state-specific), Minorities up to Rs 2 lakh. Students must have minimum 75% attendance and have passed the previous examination. They cannot receive another scholarship for the same course. Applications are submitted online through the National Scholarship Portal (scholarships.gov.in) or respective state portals like MahaDBT for Maharashtra. The scheme is implemented by the Ministry of Social Justice & Empowerment (SC), Ministry of Tribal Affairs (ST), Ministry of Minority Affairs (Minorities), and respective state governments.",
+    "rules": {
+      "min_age": null,
+      "max_age": null,
+      "max_income": 250000,
+      "states": [],
+      "gender": null,
+      "occupations": ["student"],
+      "needs_land": false,
+      "categories": ["SC", "ST", "OBC", "EBC", "minority"]
+    }
+  }
+]

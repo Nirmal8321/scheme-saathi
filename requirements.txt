@@ -4,6 +4,7 @@ python-multipart
 pydantic
 python-dotenv
 anthropic
+google-genai
 chromadb
 sentence-transformers
 pymupdf
