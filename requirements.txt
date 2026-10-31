@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+python-dotenv
+anthropic
+chromadb
+sentence-transformers
+pymupdf
+faster-whisper
+gTTS
+streamlit
+requests
+pytest

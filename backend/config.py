@@ -1,0 +1,1 @@
+"""Configuration management - loads environment variables and constants."""

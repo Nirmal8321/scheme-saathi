@@ -1,0 +1,1 @@
+"""Mock data for early UI development - returns sample responses when USE_MOCK=true."""

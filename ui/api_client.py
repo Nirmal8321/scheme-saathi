@@ -1,0 +1,1 @@
+"""API client for calling FastAPI backend with mock fallback."""

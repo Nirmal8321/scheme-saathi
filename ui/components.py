@@ -1,0 +1,1 @@
+"""Reusable UI components - scheme cards, badges, audio player."""

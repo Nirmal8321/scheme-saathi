@@ -1,0 +1,1 @@
+"""FastAPI app entry point with routes for analyze, chat, explain-pdf, health, stt, tts."""

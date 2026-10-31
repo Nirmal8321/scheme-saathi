@@ -4,7 +4,7 @@ Rule: when a task is done, change `[ ]` to `[x]` and add ONE short line after it
 
 ## Shared
 
-- [ ] S1 Repo skeleton, requirements.txt, .env.example, README created
+- [x] S1 Repo skeleton, requirements.txt, .env.example, README created
 
 ## Person A: Backend + AI
 
