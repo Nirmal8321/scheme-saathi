@@ -3,6 +3,7 @@ import json
 import re
 import os
 import sys
+import time
 from typing import Dict, Any, List, Tuple, Optional, Set
 
 from backend.llm import call_json, call_text, translate_text
@@ -445,121 +446,6 @@ def select_results(results: List[SchemeResult], profile: Dict[str, Any], query_t
 # ============ END SHARED SELECT_RESULTS ============
 
 
-def _translate_term(term: str, language: str) -> str:
-    """Translate technical terms to target language."""
-    translations = {
-        "hi": {
-            "greenfield enterprise": "नया कारोबार",
-            "greenfield project": "नई परियोजना",
-            "loan": "ऋण",
-            "subsidy": "सब्सिडी",
-            "benefit": "लाभ",
-            "eligible": "पात्र",
-            "income": "आय",
-            "land": "जमीन",
-            "occupation": "व्यवसाय",
-            "caste": "जाति",
-            "category": "श्रेणी",
-        },
-        "mr": {
-            "greenfield enterprise": "नवीन व्यवसाय",
-            "greenfield project": "नवीन प्रकल्प",
-            "loan": "कर्ज",
-            "subsidy": "सब्सिडी",
-            "benefit": "फायदा",
-            "eligible": "पात्र",
-            "income": "आय",
-            "land": "जमीन",
-            "occupation": "व्यवसाय",
-            "caste": "जात",
-            "category": "वर्ग",
-        }
-    }
-    return translations.get(language, {}).get(term.lower(), term)
-
-
-def _clean_explanation(text: str, scheme_id: str) -> str:
-    """Remove portal names from explanation if they differ from official_link."""
-    official_link = SCHEME_OFFICIAL_LINKS.get(scheme_id, "")
-    if official_link:
-        import urllib.parse
-        try:
-            domain = urllib.parse.urlparse(official_link).netloc
-            if domain:
-                text = text.replace(domain, "")
-        except Exception:
-            pass
-    return text
-
-
-def explain_results(
-    results: List[SchemeResult],
-    profile: Dict[str, Any],
-    language: str
-) -> Tuple[List[SchemeResult], str]:
-    """
-    Explain all scheme results in the target language.
-
-    Args:
-        results: List of SchemeResult from select_results (already ranked)
-        profile: User profile dict
-        language: Target language code (en, hi, mr, etc.)
-
-    Returns:
-        Tuple of (results_with_explanation, summary_text)
-    """
-    lang_name = LANGUAGE_NAMES.get(language, "English")
-
-    # Prepare scheme info for LLM
-    scheme_infos = []
-    for r in results:
-        scheme_infos.append({
-            "scheme_id": r.scheme_id,
-            "name": r.scheme,
-            "verdict": r.eligible,
-            "reason": r.reason,
-            "benefit": r.benefit,
-            "documents": r.documents,
-            "how_to_apply": r.how_to_apply,
-            "official_link": r.official_link,
-            "source_quote": r.source_quote,
-        })
-
-    lang_name = LANGUAGE_NAMES.get(language, "English")
-
-    system_prompt = f"""You are a government scheme explainer for Indian citizens.
-Write in {lang_name} ({language} script). Use simple 6th-grade words, short sentences.
-
-Rules:
-- NEVER change the verdict (yes/no/maybe), benefit amount, or document list.
-- Keep scheme names in English (PM-KISAN, Namo Shetkari, etc.).
-- DO NOT include portal names/URLs in explanations (official_link provided separately).
-- Write everything else in {lang_name} ({language} script).
-- Money: write as "6,000 रुपये" (Hindi/Marathi) or "Rs 6,000" (English).
-- Translate technical terms: "greenfield enterprise" -> "नया कारोबार" (hi) / "नवीन व्यवसाय" (mr).
-- For "maybe": explain what is unknown in simple words (e.g., "tell us your age").
-- "explanation": 2-3 short sentences. Benefit first, then what to do.
-- DO NOT ask the user any question. Do NOT mention caste.
-- DO NOT state whether the user is or is not eligible.
-- DO NOT mention income limits, ages, education level, attendance, or any specific numbers that are not explicitly present in the scheme's benefit text, how_to_apply, or documents fields provided.
-- DO NOT add facts not present in the provided scheme data.
-- Write only what the scheme gives (use the benefit text exactly) and how to apply.
-- Return ONLY valid JSON with this structure:
-{{
-  "results": [
-    {{"scheme_id": "...", "explanation": "..."}},
-    ...
-  ],
-  "summary_text": "..."
-}}"""
-
-    user_prompt = f"""User Profile: {json.dumps(profile, ensure_ascii=False)}
-Schemes:
-{json.dumps(scheme_infos, ensure_ascii=False, indent=2)}
-
-Target language: {language} ({LANGUAGE_NAMES.get(language, 'English')})"""
-
-
 def _filter_unauthorized_numbers(
     explanation: str,
     scheme_benefit: str,
@@ -615,167 +501,193 @@ def _filter_unauthorized_numbers(
     return ' '.join(filtered_sentences).strip()
 
 
+def _load_schemes() -> List[Dict[str, Any]]:
+    """Load schemes.json. Return [] on failure."""
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    schemes_path = os.path.join(base_dir, "data", "schemes.json")
+    try:
+        with open(schemes_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
 def explain_results(
     results: List[SchemeResult],
     profile: Dict[str, Any],
     language: str
 ) -> Tuple[List[SchemeResult], str]:
+    """
+    Explain all scheme results in the target language.
 
-            # Apply explanations and copy fields from schemes.json
-            # Load scheme data for filtering
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            schemes_path = os.path.join(base_dir, "data", "schemes.json")
-            with open(schemes_path, "r", encoding="utf-8") as f:
-                all_schemes = json.load(f)
-            scheme_map = {s["id"]: s for s in all_schemes}
+    Args:
+        results: List of SchemeResult from select_results (already ranked)
+        profile: User profile dict
+        language: Target language code (en, hi, mr, etc.)
 
-            # Apply explanations and copy fields from schemes.json
-            for r in results:
-                if r.scheme_id in explanation_map:
-                    # Clean explanation (remove portal names)
-                    explanation = _clean_explanation(explanation_map[r.scheme_id], r.scheme_id)
-                    # Filter unauthorized numbers
-                    scheme_data = scheme_map.get(r.scheme_id, {})
-                    explanation = _filter_unauthorized_numbers(
-                        explanation,
-                        scheme_data.get("benefit", ""),
-                        scheme_data.get("how_to_apply", ""),
-                        scheme_data.get("documents", []),
-                        profile
-                    )
-                    r.explanation = explanation
+    Returns:
+        Tuple of (results_with_explanation, summary_text)
+    """
+    lang_name = LANGUAGE_NAMES.get(language, "English")
 
-                # Always copy official_link, benefit, documents, how_to_apply from schemes.json
-                if r.scheme_id in SCHEME_OFFICIAL_LINKS:
-                    r.official_link = SCHEME_OFFICIAL_LINKS[r.scheme_id]
+    # Prepare scheme info for LLM
+    scheme_infos = []
+    for r in results:
+        scheme_infos.append({
+            "scheme_id": r.scheme_id,
+            "name": r.scheme,
+            "verdict": r.eligible,
+            "reason": r.reason,
+            "benefit": r.benefit,
+            "documents": r.documents,
+            "how_to_apply": r.how_to_apply,
+            "official_link": r.official_link,
+            "source_quote": r.source_quote,
+        })
 
-                # Reload full scheme data for other fields
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                schemes_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "schemes.json")
-                try:
-                    with open(schemes_path, "r", encoding="utf-8") as f:
-                        all_schemes = json.load(f)
-                        for s in all_schemes:
-                            if s["id"] == r.scheme_id:
-                                r.benefit = s.get("benefit", r.benefit)
-                                r.documents = s.get("documents", r.documents)
-                                r.how_to_apply = s.get("how_to_apply", r.how_to_apply)
-                                break
-                except Exception:
-                    pass
+    system_prompt = f"""You are a government scheme explainer for Indian citizens.
+Write in {lang_name} ({language} script). Use simple 6th-grade words, short sentences.
 
-            # Post-process for Hindi/Marathi: replace currency/number formats
-            if language in ("hi", "mr"):
-                for r in results:
-                    if r.explanation:
-                        r.explanation = _post_process_currency(r.explanation, language)
-                    if r.reason:
-                        r.reason = _post_process_currency(r.reason, language)
-                summary_text = _post_process_currency(summary_text, language) if summary_text else summary_text
+Rules:
+- NEVER change the verdict (yes/no/maybe), benefit amount, or document list.
+- Keep scheme names in English (PM-KISAN, Namo Shetkari, etc.).
+- DO NOT include portal names/URLs in explanations (official_link provided separately).
+- Write everything else in {lang_name} ({language} script).
+- Money: write as "6,000 रुपये" (Hindi/Marathi) or "Rs 6,000" (English).
+- Translate technical terms: "greenfield enterprise" -> "नया कारोबार" (hi) / "नवीन व्यवसाय" (mr).
+- For "maybe": explain what is unknown in simple words (e.g., "tell us your age").
+- "explanation": 2-3 short sentences. Benefit first, then what to do.
+- DO NOT ask the user any question. Do NOT mention caste.
+- DO NOT state whether the user is or is not eligible.
+- DO NOT mention income limits, ages, education level, attendance, or any specific numbers that are not explicitly present in the scheme's benefit text, how_to_apply, or documents fields provided.
+- DO NOT add facts not present in the provided scheme data.
+- Write only what the scheme gives (use the benefit text exactly) and how to apply.
+- Return ONLY valid JSON with this structure:
+{{
+  "results": [
+    {{"scheme_id": "...", "explanation": "..."}},
+    ...
+  ],
+  "summary_text": "..."
+}}"""
 
-            # Filter unauthorized numbers from summary_text
-            if summary_text:
-                # Use first scheme's data for filtering summary
-                first_scheme = scheme_map.get(results[0].scheme_id, {}) if results else {}
-                summary_text = _filter_unauthorized_numbers(
-                    summary_text,
-                    first_scheme.get("benefit", ""),
-                    first_scheme.get("how_to_apply", ""),
-                    first_scheme.get("documents", []),
-                    profile
-                )
+    user_prompt = f"""User Profile: {json.dumps(profile, ensure_ascii=False)}
+Schemes:
+{json.dumps(scheme_infos, ensure_ascii=False, indent=2)}
 
-            # Append next_question to each explanation in Python
-            # Build next_question from selected results
-            next_question = None
-            for r in results:
-                # Check if scheme has requires_verification
-                from backend.questions import get_verification_question
-                scheme_data = None
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                schemes_path = os.path.join(base_dir, "data", "schemes.json")
-                try:
-                    with open(schemes_path, "r", encoding="utf-8") as f:
-                        all_schemes = json.load(f)
-                        for s in all_schemes:
-                            if s["id"] == r.scheme_id:
-                                scheme_data = s
-                                break
-                except Exception:
-                    pass
+Target language: {language} ({lang_name})"""
 
-                if scheme_data:
-                    requires_verification = scheme_data.get("requires_verification", [])
-                    if requires_verification:
-                        next_question = get_verification_question(requires_verification[0], language)
-                        break
+    # ---- Call LLM (retry once on parse failure) ----
+    explanation_map: Dict[str, str] = {}
+    summary_text = ""
 
-                        # If no verification question, use the first missing field from profile needed by selected schemes
-            if next_question is None:
-                # Compute missing fields from selected schemes only
-                selected_schemes = []
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                schemes_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "schemes.json")
-                try:
-                    with open(schemes_path, "r", encoding="utf-8") as f:
-                        all_schemes = json.load(f)
-                        scheme_map = {s["id"]: s for s in all_schemes}
-                        for r in results:
-                            if r.scheme_id in scheme_map:
-                                selected_schemes.append(scheme_map[r.scheme_id])
-                except Exception:
-                    pass
-
-                # Get missing facts from selected schemes
-                from backend.questions import get_question
-                needed_facts = set()
-                for s in selected_schemes:
-                    rules = s.get("rules", {})
-                    if rules.get("gender") is not None:
-                        needed_facts.add("gender")
-                    if rules.get("min_age") is not None or rules.get("max_age") is not None:
-                        needed_facts.add("age")
-                    if rules.get("max_income") is not None:
-                        needed_facts.add("annual_income")
-                    if rules.get("states"):
-                        needed_facts.add("state")
-                    if rules.get("occupations"):
-                        needed_facts.add("occupation")
-                    if rules.get("needs_land"):
-                        needed_facts.add("land_acres")
-                    if rules.get("categories") and s.get("requires_verification"):
-                        needed_facts.add("caste_category")
-
-                # Filter to only those actually missing in profile
-                missing_in_profile = [f for f in needed_facts if profile.get(f) is None]
-                if missing_in_profile:
-                    first_missing = missing_in_profile[0]
-                    next_question = get_question(first_missing, language)
-            else:
-                missing_in_profile = []
-
-            # Use first result's language if next_question exists, otherwise just return summary_text
-            final_summary = summary_text
-            if next_question and results:
-                # Translate next_question to target language
-                from backend.questions import get_question
-                lang_question = None
-                if missing_in_profile:
-                    first_missing = missing_in_profile[0]
-                    lang_question = get_question(first_missing, language)
-                if lang_question:
-                    final_summary = summary_text + " " + lang_question
-                else:
-                    final_summary = summary_text + " " + next_question
-
-            return results, final_summary
-
+    for attempt in range(2):
+        try:
+            llm_result = call_json(system_prompt, user_prompt, max_tokens=2000, temperature=0.3)
+            parsed = _parse_json_with_retry(
+                json.dumps(llm_result) if isinstance(llm_result, dict) else str(llm_result)
+            )
+            for item in parsed.get("results", []):
+                explanation_map[item.get("scheme_id")] = item.get("explanation", "")
+            summary_text = parsed.get("summary_text", "") or ""
+            break
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             if attempt == 0:
                 continue
             raise ValueError(f"Failed to parse LLM response after retry: {e}")
 
-    return results, "Check official portals for details."
+    # ---- Load scheme data once ----
+    all_schemes = _load_schemes()
+    scheme_map = {s["id"]: s for s in all_schemes}
+
+    # ---- Apply explanations and copy fields from schemes.json ----
+    for r in results:
+        scheme_data = scheme_map.get(r.scheme_id, {})
+
+        if r.scheme_id in explanation_map:
+            explanation = _clean_explanation(explanation_map[r.scheme_id], r.scheme_id)
+            explanation = _filter_unauthorized_numbers(
+                explanation,
+                scheme_data.get("benefit", ""),
+                scheme_data.get("how_to_apply", ""),
+                scheme_data.get("documents", []),
+                profile
+            )
+            r.explanation = explanation
+
+        if r.scheme_id in SCHEME_OFFICIAL_LINKS:
+            r.official_link = SCHEME_OFFICIAL_LINKS[r.scheme_id]
+
+        if scheme_data:
+            r.benefit = scheme_data.get("benefit", r.benefit)
+            r.documents = scheme_data.get("documents", r.documents)
+            r.how_to_apply = scheme_data.get("how_to_apply", r.how_to_apply)
+
+    # ---- Hindi/Marathi currency post-processing ----
+    if language in ("hi", "mr"):
+        for r in results:
+            if r.explanation:
+                r.explanation = _post_process_currency(r.explanation, language)
+            if r.reason:
+                r.reason = _post_process_currency(r.reason, language)
+        if summary_text:
+            summary_text = _post_process_currency(summary_text, language)
+
+    # ---- Filter unauthorized numbers from summary ----
+    if summary_text:
+        first_scheme = scheme_map.get(results[0].scheme_id, {}) if results else {}
+        summary_text = _filter_unauthorized_numbers(
+            summary_text,
+            first_scheme.get("benefit", ""),
+            first_scheme.get("how_to_apply", ""),
+            first_scheme.get("documents", []),
+            profile
+        )
+
+    # ---- Build next_question in Python ----
+    next_question = None
+
+    # 1) Verification question from first scheme that needs it
+    for r in results:
+        scheme_data = scheme_map.get(r.scheme_id)
+        if scheme_data:
+            requires_verification = scheme_data.get("requires_verification", [])
+            if requires_verification:
+                next_question = get_verification_question(requires_verification[0], language)
+                break
+
+    # 2) Otherwise first missing profile fact needed by selected schemes
+    if next_question is None:
+        selected_schemes = [scheme_map[r.scheme_id] for r in results if r.scheme_id in scheme_map]
+
+        needed_facts = set()
+        for s in selected_schemes:
+            rules = s.get("rules", {})
+            if rules.get("gender") is not None:
+                needed_facts.add("gender")
+            if rules.get("min_age") is not None or rules.get("max_age") is not None:
+                needed_facts.add("age")
+            if rules.get("max_income") is not None:
+                needed_facts.add("annual_income")
+            if rules.get("states"):
+                needed_facts.add("state")
+            if rules.get("occupations"):
+                needed_facts.add("occupation")
+            if rules.get("needs_land"):
+                needed_facts.add("land_acres")
+            if rules.get("categories") and s.get("requires_verification"):
+                needed_facts.add("caste_category")
+
+        fact_order = ["gender", "age", "annual_income", "state", "occupation", "land_acres", "caste_category"]
+        missing_in_profile = [f for f in fact_order if f in needed_facts and profile.get(f) is None]
+        if missing_in_profile:
+            next_question = get_question(missing_in_profile[0], language)
+
+    final_summary = summary_text
+    if next_question and results:
+        final_summary = (summary_text + " " + next_question).strip()
+
+    return results, final_summary or "Check official portals for details."
 
 
 def answer_chat(
@@ -800,17 +712,13 @@ def answer_chat(
     """
     lang_name = LANGUAGE_NAMES.get(language, "English")
 
-    # Determine which schemes to use for context
     scheme_ids = matched_scheme_ids
-    sources = []
-    context_parts = []
+    sources: List[str] = []
+    context_parts: List[str] = []
 
     if scheme_ids:
         # Load scheme details from schemes.json
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        schemes_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "schemes.json")
-        with open(schemes_path, "r", encoding="utf-8") as f:
-            schemes = json.load(f)
+        schemes = _load_schemes()
         scheme_map = {s["id"]: s for s in schemes}
 
         for sid in scheme_ids:
@@ -837,25 +745,30 @@ def answer_chat(
                 text = result.text if hasattr(result, "text") else str(result)
             if scheme_id:
                 sources.append(scheme_id)
-                scheme_name = result.get("scheme_name", scheme_id) if isinstance(result, dict) else result.metadata.get("scheme_name", scheme_id)
+                scheme_name = (
+                    result.get("scheme_name", scheme_id) if isinstance(result, dict)
+                    else result.metadata.get("scheme_name", scheme_id)
+                )
                 context_parts.append(f"SCHEME: {scheme_name} ({scheme_id})\nCONTEXT: {text}")
 
     context = "\n---\n".join(context_parts) if context_parts else "No relevant scheme context found."
 
-    # Handle document questions in Python
+    # ---- Document questions: answer built in Python, LLM only translates ----
     if _is_document_question(question) and (matched_scheme_ids or sources):
-        # Get document schemes: yes first (max 2), then maybe with Needs verification (max 2), max 3 total
         doc_scheme_ids = []
         if matched_scheme_ids:
-            # Use matched scheme IDs directly (they're already prioritized by select_results)
+            # Already prioritized by select_results
             doc_scheme_ids = matched_scheme_ids[:3]
 
         doc_answer, doc_sources = _build_document_answer(doc_scheme_ids, language)
         if doc_answer:
-            # Use LLM only to translate/simplify - use call_text for plain text
-            lang_name = LANGUAGE_NAMES.get(language, "English")
+            translation_prompt = (
+                f"Translate the following text into {lang_name} ({language} script). "
+                f"Keep scheme names and portal names in English. Use simple words, short sentences. "
+                f"Return ONLY the translated text, no JSON, no explanation.\n\n"
+                f"Text to translate:\n{doc_answer}"
+            )
             try:
-                translation_prompt = f"Translate the following text into {lang_name} ({language} script). Keep scheme names and portal names in English. Use simple words, short sentences. Return ONLY the translated text, no JSON, no explanation.\n\nText to translate:\n{doc_answer}"
                 answer = call_text(
                     "You are a translator for government scheme information.",
                     translation_prompt,
@@ -864,21 +777,22 @@ def answer_chat(
                 )
                 return answer, doc_sources, False
             except Exception as e:
-                # Log the real exception
                 error_type = type(e).__name__
                 error_msg = str(e)
                 print(f"Translation failed: {error_type}: {error_msg}", file=sys.stderr)
 
-                # Check for 429 and retry once
+                # On 429, wait and retry once
                 if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
                     try:
                         from backend.llm import _extract_retry_delay
                         retry_delay = _extract_retry_delay(error_msg)
                         if retry_delay is not None:
                             sleep_time = retry_delay + 1
-                            print(f"Translation rate limited. Sleeping for {sleep_time}s before retry...", file=sys.stderr)
+                            print(
+                                f"Translation rate limited. Sleeping for {sleep_time}s before retry...",
+                                file=sys.stderr
+                            )
                             time.sleep(sleep_time)
-                            # Retry once
                             try:
                                 answer = call_text(
                                     "You are a translator for government scheme information.",
@@ -889,23 +803,22 @@ def answer_chat(
                                 return answer, doc_sources, False
                             except Exception:
                                 pass
-                        # If 429 but no retry_delay or retry failed, return English with flag
-                        return doc_answer, doc_sources, True
                     except Exception:
-                        # If any error in retry logic, return English with flag
-                        return doc_answer, doc_sources, True
-                # For other errors, return English with flag
+                        pass
+
+                # Fallback: English answer + translation_failed flag
                 return doc_answer, doc_sources, True
 
-        # General question - use LLM
-        lang_name = LANGUAGE_NAMES.get(language, "English")
-        history_str = "\n".join(f"{m.get('role', 'user')}: {m.get('content', '')}" for m in history[-3:])
+    # ---- General question: use LLM ----
+    history_str = "\n".join(
+        f"{m.get('role', 'user')}: {m.get('content', '')}" for m in history[-3:]
+    )
 
-        system_prompt = f"""You are a helpful assistant for government scheme questions.
+    system_prompt = f"""You are a helpful assistant for government scheme questions.
 Answer in {lang_name} ({language} script). Use simple words, max 4 short sentences.
 Only use the provided context and user profile. If the answer is not there, say "I am not sure, please check the official portal" and mention the relevant official_link."""
 
-        user_prompt = f"""User Profile: {json.dumps(profile, ensure_ascii=False)}
+    user_prompt = f"""User Profile: {json.dumps(profile, ensure_ascii=False)}
 
 Context:
 {context}
@@ -917,22 +830,24 @@ Question: {question}
 
 Answer in {lang_name} ({language} script):"""
 
-        try:
-            answer = call_text(
-                system_prompt,
-                user_prompt,
-                max_tokens=500,
-                temperature=0.3
-            )
-        except Exception as e:
-            # Return Python-built fallback answer with error note
-            fallback = "I am not sure about that. Please check the official portal for accurate information." if language == "en" else \
-                       "मुझे यकीन नहीं है। कृपया आधिकारिक पोर्टल पर जाँच करें।" if language == "hi" else \
-                       "मला खात्री नाही। कृपया अधिकृत पोर्टल तपासा।"
-            error_note = f" (translation unavailable: {str(e)[:100]})"
-            return fallback + error_note, sources, False
+    try:
+        answer = call_text(
+            system_prompt,
+            user_prompt,
+            max_tokens=500,
+            temperature=0.3
+        )
+    except Exception as e:
+        if language == "en":
+            fallback = "I am not sure about that. Please check the official portal for accurate information."
+        elif language == "hi":
+            fallback = "मुझे यकीन नहीं है। कृपया आधिकारिक पोर्टल पर जाँच करें।"
+        else:
+            fallback = "मला खात्री नाही। कृपया अधिकृत पोर्टल तपासा।"
+        error_note = f" (translation unavailable: {str(e)[:100]})"
+        return fallback + error_note, sources, False
 
-        return answer, sources, False
+    return answer, sources, False
 
 
 def explain_pdf(text: str, language: str) -> Tuple[str, List[str], str, List[str]]:
@@ -950,7 +865,7 @@ def explain_pdf(text: str, language: str) -> Tuple[str, List[str], str, List[str
     text = text[:12000]
 
     system_prompt = f"""You are a document explainer for government documents.
-Explain the document in {LANGUAGE_NAMES.get(language, 'English')} ({language} script). Use simple 6th-grade words, short sentences.
+Explain the document in {lang_name} ({language} script). Use simple 6th-grade words, short sentences.
 Money: "6,000 रुपये" for Hindi/Marathi, "Rs 6,000" for English.
 Translate terms: "greenfield enterprise" -> "नया कारोबार" (hi) / "नवीन व्यवसाय" (mr).
 Return ONLY valid JSON with this structure:
@@ -965,31 +880,26 @@ Keep names of schemes and portals in English."""
     user_prompt = f"""Document text:
 {text}
 
-Target language: {language} ({LANGUAGE_NAMES.get(language, 'English')})"""
+Target language: {language} ({lang_name})"""
 
     for attempt in range(2):
         try:
             llm_result = call_json(system_prompt, user_prompt, max_tokens=1500, temperature=0.3)
-            parsed = _parse_json_with_retry(json.dumps(llm_result) if isinstance(llm_result, dict) else str(llm_result))
-
-            summary = parsed.get("summary", "")
-            key_points = parsed.get("key_points", [])
-            who_is_affected = parsed.get("who_is_affected", "")
-            deadlines = parsed.get("deadlines", [])
-
-            return summary, key_points[:5], who_is_affected, deadlines
-
-        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            parsed = _parse_json_with_retry(
+                json.dumps(llm_result) if isinstance(llm_result, dict) else str(llm_result)
+            )
+            return (
+                parsed.get("summary", "") or "Could not generate explanation.",
+                parsed.get("key_points", []) or [],
+                parsed.get("who_is_affected", "") or "Unknown",
+                parsed.get("deadlines", []) or [],
+            )
+        except (json.JSONDecodeError, ValueError, KeyError):
             if attempt == 0:
                 continue
-            raise ValueError(f"Failed to parse PDF explanation after retry: {e}")
 
     return "Could not generate explanation.", [], "Unknown", []
 
 
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1:
-        print("Usage: python -m backend.explain \"question\" [language]")
-    else:
-        print("Module loaded. Use explain_results(), select_results(), answer_chat(), explain_pdf()")
+    print("Module loaded. Use explain_results(), select_results(), answer_chat(), explain_pdf().")

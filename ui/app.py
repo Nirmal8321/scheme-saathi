@@ -272,6 +272,10 @@ def main():
         "Verify all details at the official portal before applying. "
         "Scheme Saathi is not affiliated with any government agency."
     )
+    st.caption(
+        "📚 Knowledge base curated from official sources (link per scheme). "
+        "Analysis, translation, voice and PDF reading are live."
+    )
 
 
 if __name__ == "__main__":

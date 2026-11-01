@@ -170,3 +170,8 @@ def tts(text: str, language: str) -> Dict[str, Any]:
     except Exception as e:
         logger.exception(f"TTS unexpected error: {e}")
         return {"error": str(e)}
+
+
+def official_source(scheme_id: str, language: str) -> Dict[str, Any]:
+    """Fetch and summarize the official scheme page."""
+    return _post_json("/api/official-source", {"scheme_id": scheme_id, "language": language}, timeout=30)

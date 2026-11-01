@@ -1,6 +1,6 @@
 """Streamlit UI components for Scheme Saathi."""
 import streamlit as st
-from ui.api_client import tts
+from ui.api_client import tts, official_source
 
 
 def profile_box(profile: dict):
@@ -74,6 +74,20 @@ def scheme_card(result: dict):
     # Official link button
     if result.get("official_link"):
         st.link_button("🔗 Official Portal", result["official_link"])
+
+    # Check official source button
+    scheme_id = result.get("scheme_id", "")
+    if scheme_id and st.button("🔎 Check Official Source", key=f"official_{scheme_id}", use_container_width=True):
+        with st.spinner("Fetching official page..."):
+            resp = official_source(scheme_id, st.session_state.get("language", "en"))
+        if "error" in resp:
+            st.error(f"Could not check official source: {resp['error']}")
+        elif resp.get("success"):
+            st.success("Official source fetched")
+            st.markdown(f"**📄 Summary from {resp.get('source_url', '')}:**")
+            st.markdown(resp.get("summary", ""))
+        else:
+            st.warning(resp.get("error", "Could not fetch official source."))
 
     # Source quote
     if result.get("source_quote"):

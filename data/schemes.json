@@ -14,7 +14,11 @@
       "Excludes professionals (doctors, engineers, lawyers, CAs, architects)",
       "Excludes former and present constitutional post holders"
     ],
-    "documents": ["Aadhaar", "7/12 land record (or equivalent)", "Bank passbook"],
+    "documents": [
+      "Aadhaar",
+      "7/12 land record (or equivalent)",
+      "Bank passbook"
+    ],
     "how_to_apply": "Register at pmkisan.gov.in or via nearest CSC center",
     "official_link": "https://pmkisan.gov.in",
     "last_verified": "UNVERIFIED",
@@ -25,11 +29,15 @@
       "max_income": null,
       "states": [],
       "gender": null,
-      "occupations": ["farmer", "agriculturist"],
+      "occupations": [
+        "farmer",
+        "agriculturist"
+      ],
       "needs_land": true,
       "categories": []
     },
-    "requires_verification": []
+    "requires_verification": [],
+    "source_url": "https://pmkisan.gov.in"
   },
   {
     "id": "namo_shetkari",
@@ -45,7 +53,12 @@
       "Excludes income tax payers",
       "Excludes institutional landholders"
     ],
-    "documents": ["Aadhaar", "7/12 land record (Maharashtra)", "Bank passbook", "PM-KISAN registration proof"],
+    "documents": [
+      "Aadhaar",
+      "7/12 land record (Maharashtra)",
+      "Bank passbook",
+      "PM-KISAN registration proof"
+    ],
     "how_to_apply": "Apply online at mahadbt.maharashtra.gov.in or via nearest CSC center",
     "official_link": "https://mahadbt.maharashtra.gov.in",
     "last_verified": "UNVERIFIED",
@@ -54,13 +67,19 @@
       "min_age": null,
       "max_age": null,
       "max_income": null,
-      "states": ["Maharashtra"],
+      "states": [
+        "Maharashtra"
+      ],
       "gender": null,
-      "occupations": ["farmer", "agriculturist"],
+      "occupations": [
+        "farmer",
+        "agriculturist"
+      ],
       "needs_land": true,
       "categories": []
     },
-    "requires_verification": []
+    "requires_verification": [],
+    "source_url": "https://mahadbt.maharashtra.gov.in"
   },
   {
     "id": "ladki_bahin",
@@ -77,7 +96,13 @@
       "Not a government employee or income tax payer",
       "Must have bank account linked with Aadhaar"
     ],
-    "documents": ["Aadhaar", "Residence proof (domicile/birth certificate)", "Income certificate", "Bank passbook", "Age proof"],
+    "documents": [
+      "Aadhaar",
+      "Residence proof (domicile/birth certificate)",
+      "Income certificate",
+      "Bank passbook",
+      "Age proof"
+    ],
     "how_to_apply": "Apply online at ladakibahin.maharashtra.gov.in or via nearest CSC center",
     "official_link": "https://ladakibahin.maharashtra.gov.in",
     "last_verified": "UNVERIFIED",
@@ -86,13 +111,23 @@
       "min_age": 21,
       "max_age": 65,
       "max_income": 250000,
-      "states": ["Maharashtra"],
+      "states": [
+        "Maharashtra"
+      ],
       "gender": "female",
       "occupations": [],
       "needs_land": false,
-      "categories": ["SC", "ST", "OBC", "General"]
+      "categories": [
+        "SC",
+        "ST",
+        "OBC",
+        "General"
+      ]
     },
-    "requires_verification": ["family_income_proof"]
+    "requires_verification": [
+      "family_income_proof"
+    ],
+    "source_url": "https://ladakibahin.maharashtra.gov.in"
   },
   {
     "id": "mudra_loan",
@@ -109,7 +144,15 @@
       "Not a defaulter to any bank/financial institution",
       "Manufacturing, trading, or services sector (non-farm)"
     ],
-    "documents": ["Aadhaar", "PAN", "Business address proof", "Business identity proof", "Bank statements (6 months)", "Income tax returns (if applicable)", "Quotations for machinery/equipment (if applicable)"],
+    "documents": [
+      "Aadhaar",
+      "PAN",
+      "Business address proof",
+      "Business identity proof",
+      "Bank statements (6 months)",
+      "Income tax returns (if applicable)",
+      "Quotations for machinery/equipment (if applicable)"
+    ],
     "how_to_apply": "Apply at any bank branch, NBFC, or MFIs; online at mudra.org.in",
     "official_link": "https://mudra.org.in",
     "last_verified": "UNVERIFIED",
@@ -120,11 +163,29 @@
       "max_income": null,
       "states": [],
       "gender": null,
-      "occupations": ["entrepreneur", "business_owner", "self_employed", "trader", "manufacturer", "service_provider", "street_vendor", "shopkeeper", "artisan", "small_business"],
+      "occupations": [
+        "entrepreneur",
+        "business_owner",
+        "self_employed",
+        "trader",
+        "manufacturer",
+        "service_provider",
+        "street_vendor",
+        "shopkeeper",
+        "artisan",
+        "small_business"
+      ],
       "needs_land": false,
-      "categories": ["SC", "ST", "OBC", "women", "minority"]
+      "categories": [
+        "SC",
+        "ST",
+        "OBC",
+        "women",
+        "minority"
+      ]
     },
-    "requires_verification": []
+    "requires_verification": [],
+    "source_url": "https://mudra.org.in"
   },
   {
     "id": "pm_ujjwala",
@@ -140,7 +201,13 @@
       "Categories: SC/ST households, PMAY-G beneficiaries, AAY beneficiaries, forest dwellers, most backward classes, tea garden workers, island/river island residents",
       "Annual household income below specified threshold"
     ],
-    "documents": ["Aadhaar", "Ration card / BPL certificate", "Bank passbook", "Age proof", "Residence proof"],
+    "documents": [
+      "Aadhaar",
+      "Ration card / BPL certificate",
+      "Bank passbook",
+      "Age proof",
+      "Residence proof"
+    ],
     "how_to_apply": "Apply at nearest LPG distributor or online at pmuy.gov.in",
     "official_link": "https://pmuy.gov.in",
     "last_verified": "UNVERIFIED",
@@ -153,9 +220,21 @@
       "gender": "female",
       "occupations": [],
       "needs_land": false,
-      "categories": ["SC", "ST", "OBC", "AAY", "forest_dweller", "tea_garden_worker", "migrant"]
+      "categories": [
+        "SC",
+        "ST",
+        "OBC",
+        "AAY",
+        "forest_dweller",
+        "tea_garden_worker",
+        "migrant"
+      ]
     },
-    "requires_verification": ["bpl_status", "existing_lpg_connection"]
+    "requires_verification": [
+      "bpl_status",
+      "existing_lpg_connection"
+    ],
+    "source_url": "https://pmuy.gov.in"
   },
   {
     "id": "pmjay",
@@ -171,7 +250,11 @@
       "No cap on family size or age",
       "Pre-existing conditions covered from day 1"
     ],
-    "documents": ["Aadhaar", "Ration card / family ID", "Any government-issued ID"],
+    "documents": [
+      "Aadhaar",
+      "Ration card / family ID",
+      "Any government-issued ID"
+    ],
     "how_to_apply": "Check eligibility at beneficiary.nha.gov.in or via PMJAY kiosk at empaneled hospitals",
     "official_link": "https://pmjay.gov.in",
     "last_verified": "UNVERIFIED",
@@ -184,9 +267,21 @@
       "gender": null,
       "occupations": [],
       "needs_land": false,
-      "categories": ["SC", "ST", "vulnerable", "destitute", "manual_scavenger", "bonded_labour", "primitive_tribal", "urban_poor"]
+      "categories": [
+        "SC",
+        "ST",
+        "vulnerable",
+        "destitute",
+        "manual_scavenger",
+        "bonded_labour",
+        "primitive_tribal",
+        "urban_poor"
+      ]
     },
-    "requires_verification": ["secc_listing_or_income_proof"]
+    "requires_verification": [
+      "secc_listing_or_income_proof"
+    ],
+    "source_url": "https://pmjay.gov.in"
   },
   {
     "id": "pm_awas",
@@ -204,7 +299,14 @@
       "Adult female ownership/co-ownership mandatory for EWS/LIG",
       "Property location: all statutory towns (Urban) / Gram Panchayats (Gramin)"
     ],
-    "documents": ["Aadhaar", "PAN", "Income proof", "Property documents", "Bank statements", "NOC from builder/society"],
+    "documents": [
+      "Aadhaar",
+      "PAN",
+      "Income proof",
+      "Property documents",
+      "Bank statements",
+      "NOC from builder/society"
+    ],
     "how_to_apply": "Urban: pmaymis.gov.in or via ULB/CSC; Gramin: pmayg.dord.gov.in or via Gram Panchayat",
     "official_link": "https://pmaymis.gov.in",
     "last_verified": "UNVERIFIED",
@@ -217,9 +319,21 @@
       "gender": null,
       "occupations": [],
       "needs_land": false,
-      "categories": ["EWS", "LIG", "MIG", "SC", "ST", "OBC", "minority", "women"]
+      "categories": [
+        "EWS",
+        "LIG",
+        "MIG",
+        "SC",
+        "ST",
+        "OBC",
+        "minority",
+        "women"
+      ]
     },
-    "requires_verification": ["house_ownership"]
+    "requires_verification": [
+      "house_ownership"
+    ],
+    "source_url": "https://pmaymis.gov.in"
   },
   {
     "id": "pm_svanidhi",
@@ -234,7 +348,12 @@
       "Vendors identified in ULB survey but not issued CoV (Letter of Recommendation from ULB)",
       "Vendors from surrounding peri-urban/rural areas vending in urban areas"
     ],
-    "documents": ["Aadhaar", "Certificate of Vending / Identity Card / Letter of Recommendation", "Bank passbook", "Mobile number"],
+    "documents": [
+      "Aadhaar",
+      "Certificate of Vending / Identity Card / Letter of Recommendation",
+      "Bank passbook",
+      "Mobile number"
+    ],
     "how_to_apply": "Apply online at pmsvanidhi.mohua.gov.in or via nearest CSC / bank branch",
     "official_link": "https://pmsvanidhi.mohua.gov.in",
     "last_verified": "UNVERIFIED",
@@ -245,11 +364,26 @@
       "max_income": null,
       "states": [],
       "gender": null,
-      "occupations": ["street_vendor", "hawker", "pavement_vendor", "mobile_vendor"],
+      "occupations": [
+        "street_vendor",
+        "hawker",
+        "pavement_vendor",
+        "mobile_vendor"
+      ],
       "needs_land": false,
-      "categories": ["SC", "ST", "OBC", "women", "minority", "PwD"]
+      "categories": [
+        "SC",
+        "ST",
+        "OBC",
+        "women",
+        "minority",
+        "PwD"
+      ]
     },
-    "requires_verification": ["vending_certificate"]
+    "requires_verification": [
+      "vending_certificate"
+    ],
+    "source_url": "https://pmsvanidhi.mohua.gov.in"
   },
   {
     "id": "stand_up_india",
@@ -265,7 +399,16 @@
       "Borrower should not be in default to any bank/financial institution",
       "Project cost covered up to 75% (25% margin money)"
     ],
-    "documents": ["Aadhaar", "PAN", "Caste certificate (for SC/ST)", "Business plan/project report", "Proof of premises", "Bank statements", "Income tax returns", "Margin money proof"],
+    "documents": [
+      "Aadhaar",
+      "PAN",
+      "Caste certificate (for SC/ST)",
+      "Business plan/project report",
+      "Proof of premises",
+      "Bank statements",
+      "Income tax returns",
+      "Margin money proof"
+    ],
     "how_to_apply": "Apply through bank branch or online at standupindia-scheme.com / myscheme.gov.in",
     "official_link": "https://standupindia-scheme.com",
     "last_verified": "UNVERIFIED",
@@ -276,11 +419,19 @@
       "max_income": null,
       "states": [],
       "gender": null,
-      "occupations": ["entrepreneur", "business_owner"],
+      "occupations": [
+        "entrepreneur",
+        "business_owner"
+      ],
       "needs_land": false,
-      "categories": ["SC", "ST", "women"]
+      "categories": [
+        "SC",
+        "ST",
+        "women"
+      ]
     },
-    "requires_verification": []
+    "requires_verification": [],
+    "source_url": "https://standupindia-scheme.com"
   },
   {
     "id": "post_matric_scholarship",
@@ -297,7 +448,16 @@
       "Attendance minimum 75%",
       "Passed previous examination"
     ],
-    "documents": ["Aadhaar", "Caste/category certificate", "Income certificate", "Domicile certificate", "Previous year marksheet", "Admission receipt/fee structure", "Bank passbook", "Bonafide certificate from institution"],
+    "documents": [
+      "Aadhaar",
+      "Caste/category certificate",
+      "Income certificate",
+      "Domicile certificate",
+      "Previous year marksheet",
+      "Admission receipt/fee structure",
+      "Bank passbook",
+      "Bonafide certificate from institution"
+    ],
     "how_to_apply": "Apply online at scholarships.gov.in (National Scholarship Portal) or state portal (e.g., mahadbt.maharashtra.gov.in)",
     "official_link": "https://scholarships.gov.in",
     "last_verified": "UNVERIFIED",
@@ -308,11 +468,22 @@
       "max_income": 250000,
       "states": [],
       "gender": null,
-      "occupations": ["student"],
+      "occupations": [
+        "student"
+      ],
       "needs_land": false,
-      "categories": ["SC", "ST", "OBC", "EBC", "minority"]
+      "categories": [
+        "SC",
+        "ST",
+        "OBC",
+        "EBC",
+        "minority"
+      ]
     },
-    "requires_verification": ["income_certificate"]
+    "requires_verification": [
+      "income_certificate"
+    ],
+    "source_url": "https://scholarships.gov.in"
   },
   {
     "id": "pmfby",
@@ -328,7 +499,13 @@
       "Crop must be notified by state/UT for the season/year",
       "Aadhaar seeded bank account mandatory"
     ],
-    "documents": ["Aadhaar", "Land records / 7-12 extract / tenancy agreement", "Bank passbook", "Sowing certificate / crop declaration", "Aadhaar-seeded bank account details"],
+    "documents": [
+      "Aadhaar",
+      "Land records / 7-12 extract / tenancy agreement",
+      "Bank passbook",
+      "Sowing certificate / crop declaration",
+      "Aadhaar-seeded bank account details"
+    ],
     "how_to_apply": "Apply through bank branch, CSC, or online at pmfby.gov.in before cut-off date",
     "official_link": "https://pmfby.gov.in",
     "last_verified": "UNVERIFIED",
@@ -339,11 +516,20 @@
       "max_income": null,
       "states": [],
       "gender": null,
-      "occupations": ["farmer", "agriculturist", "sharecropper", "tenant_farmer"],
+      "occupations": [
+        "farmer",
+        "agriculturist",
+        "sharecropper",
+        "tenant_farmer"
+      ],
       "needs_land": true,
       "categories": []
     },
-    "requires_verification": ["crop_notified_area", "land_ownership_or_tenancy"]
+    "requires_verification": [
+      "crop_notified_area",
+      "land_ownership_or_tenancy"
+    ],
+    "source_url": "https://pmfby.gov.in"
   },
   {
     "id": "kcc",
@@ -359,7 +545,14 @@
       "Activities: crop production, post-harvest expenses, produce marketing, allied activities (dairy, poultry, fisheries)",
       "Not a defaulter to any bank"
     ],
-    "documents": ["Aadhaar", "PAN", "Land records / 7-12 extract / tenancy agreement", "Crop pattern details", "Bank passbook", "Passport size photos"],
+    "documents": [
+      "Aadhaar",
+      "PAN",
+      "Land records / 7-12 extract / tenancy agreement",
+      "Crop pattern details",
+      "Bank passbook",
+      "Passport size photos"
+    ],
     "how_to_apply": "Apply at any bank branch (commercial, RRB, cooperative) or online via pmkisan.gov.in KCC portal",
     "official_link": "https://agricoop.gov.in",
     "last_verified": "UNVERIFIED",
@@ -370,11 +563,22 @@
       "max_income": null,
       "states": [],
       "gender": null,
-      "occupations": ["farmer", "agriculturist", "tenant_farmer", "sharecropper", "dairy_farmer", "poultry_farmer", "fisheries"],
+      "occupations": [
+        "farmer",
+        "agriculturist",
+        "tenant_farmer",
+        "sharecropper",
+        "dairy_farmer",
+        "poultry_farmer",
+        "fisheries"
+      ],
       "needs_land": false,
       "categories": []
     },
-    "requires_verification": ["land_cultivation_or_tenancy"]
+    "requires_verification": [
+      "land_cultivation_or_tenancy"
+    ],
+    "source_url": "https://agricoop.gov.in"
   },
   {
     "id": "seed_subsidy",
@@ -390,7 +594,14 @@
       "Small and marginal farmers (up to 2 ha) get higher subsidy",
       "SC/ST farmers eligible for enhanced subsidy"
     ],
-    "documents": ["Aadhaar", "7/12 extract (land record)", "Caste certificate (if applicable)", "Seed purchase bill/receipt from authorized dealer", "Bank passbook", "Sowing declaration"],
+    "documents": [
+      "Aadhaar",
+      "7/12 extract (land record)",
+      "Caste certificate (if applicable)",
+      "Seed purchase bill/receipt from authorized dealer",
+      "Bank passbook",
+      "Sowing declaration"
+    ],
     "how_to_apply": "Apply online at mahadbt.maharashtra.gov.in (MahaDBT portal) or through Taluka Agriculture Officer",
     "official_link": "https://mahadbt.maharashtra.gov.in",
     "last_verified": "UNVERIFIED",
@@ -399,12 +610,26 @@
       "min_age": null,
       "max_age": null,
       "max_income": null,
-      "states": ["Maharashtra"],
+      "states": [
+        "Maharashtra"
+      ],
       "gender": null,
-      "occupations": ["farmer", "agriculturist"],
+      "occupations": [
+        "farmer",
+        "agriculturist"
+      ],
       "needs_land": true,
-      "categories": ["SC", "ST", "small_farmer", "marginal_farmer"]
+      "categories": [
+        "SC",
+        "ST",
+        "small_farmer",
+        "marginal_farmer"
+      ]
     },
-    "requires_verification": ["land_ownership_maharashtra", "seed_purchase_from_authorized_dealer"]
+    "requires_verification": [
+      "land_ownership_maharashtra",
+      "seed_purchase_from_authorized_dealer"
+    ],
+    "source_url": "https://mahadbt.maharashtra.gov.in"
   }
 ]

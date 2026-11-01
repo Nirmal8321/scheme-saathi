@@ -2,6 +2,8 @@
 
 Voice-first app. Citizen speaks in own language, says who they are. App finds govt schemes they qualify for, explains in voice, lists documents and how to apply.
 
+**Knowledge base curated from official sources (link per scheme). Analysis, translation, voice and PDF reading are live.**
+
 ## Setup
 
 ```bash
@@ -41,3 +43,7 @@ scheme-saathi/
 ## Environment Variables
 
 See `.env.example` for all options.
+
+---
+
+*Knowledge base curated from official sources (link per scheme). Analysis, translation, voice and PDF reading are live.*

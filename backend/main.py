@@ -2,11 +2,14 @@
 import os
 import json
 import logging
+import re
 from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from typing import Literal
+
+import requests
 
 from backend.extract import extract_profile
 from backend.match import match_schemes
@@ -68,6 +71,20 @@ class PdfExplainResponse(BaseModel):
     language: str
 
 
+class OfficialSourceRequest(BaseModel):
+    scheme_id: str
+    language: Literal["en", "hi", "mr", "ta", "bn", "te", "gu", "kn"]
+
+
+class OfficialSourceResponse(BaseModel):
+    scheme_id: str
+    scheme_name: str
+    summary: str
+    source_url: str
+    success: bool
+    error: Optional[str] = None
+
+
 class ErrorResponse(BaseModel):
     error: str
 
@@ -91,7 +108,7 @@ async def global_exception_handler(request, exc):
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "mock": os.getenv("USE_MOCK", "false").lower() == "true"}
+    return {"status": "ok"}
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
@@ -248,6 +265,101 @@ async def explain_pdf_endpoint(file: UploadFile = File(...), language: str = For
         if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
             raise HTTPException(status_code=429, detail="The AI is busy, please try again in a minute")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/official-source", response_model=OfficialSourceResponse)
+async def official_source_endpoint(request: OfficialSourceRequest):
+    """
+    Fetch the official scheme page and summarize it in the user's language.
+    """
+    # Find the scheme
+    scheme = SCHEME_MAP.get(request.scheme_id)
+    if not scheme:
+        raise HTTPException(status_code=404, detail="Scheme not found")
+
+    official_link = scheme.get("official_link", "")
+    if not official_link:
+        return OfficialSourceResponse(
+            scheme_id=request.scheme_id,
+            scheme_name=scheme.get("name", "Unknown"),
+            summary="",
+            source_url="",
+            success=False,
+            error="No official link available for this scheme."
+        )
+
+    # Fetch the page with timeout
+    try:
+        response = requests.get(official_link, timeout=10, headers={
+            "User-Agent": "Mozilla/5.0 (compatible; SchemeSaathi/1.0)"
+        })
+        response.raise_for_status()
+        html_content = response.text
+    except requests.exceptions.Timeout:
+        return OfficialSourceResponse(
+            scheme_id=request.scheme_id,
+            scheme_name=scheme.get("name", "Unknown"),
+            summary="",
+            source_url=official_link,
+            success=False,
+            error="The official portal took too long to respond. Please try again later or visit the portal directly."
+        )
+    except requests.exceptions.RequestException as e:
+        return OfficialSourceResponse(
+            scheme_id=request.scheme_id,
+            scheme_name=scheme.get("name", "Unknown"),
+            summary="",
+            source_url=official_link,
+            success=False,
+            error=f"Could not fetch the official portal: {str(e)}"
+        )
+
+    # Strip HTML tags
+    text_content = re.sub(r"<[^>]+>", " ", html_content)
+    text_content = re.sub(r"\s+", " ", text_content).strip()
+    text_content = text_content[:8000]  # Limit size for LLM
+
+    # Summarize with LLM
+    try:
+        from backend.llm import call_text
+        from backend.explain import LANGUAGE_NAMES
+
+        lang_name = LANGUAGE_NAMES.get(request.language, "English")
+        system_prompt = f"""You are a government scheme information assistant.
+Summarize the official scheme page content in {lang_name} ({request.language} script).
+Focus on: what the scheme offers, who is eligible, how to apply, key benefits.
+Use simple words, short sentences. Max 5 sentences.
+Keep scheme names in English. Do not add information not in the source."""
+
+        user_prompt = f"""Scheme: {scheme.get('name', '')}
+Official URL: {official_link}
+
+Page content (extracted):
+{text_content}
+
+Summarize in {lang_name} ({request.language} script):"""
+
+        summary = call_text(system_prompt, user_prompt, max_tokens=400, temperature=0.3)
+
+        return OfficialSourceResponse(
+            scheme_id=request.scheme_id,
+            scheme_name=scheme.get("name", "Unknown"),
+            summary=summary,
+            source_url=official_link,
+            success=True,
+            error=None
+        )
+
+    except Exception as e:
+        logger.exception("Error summarizing official source")
+        return OfficialSourceResponse(
+            scheme_id=request.scheme_id,
+            scheme_name=scheme.get("name", "Unknown"),
+            summary="",
+            source_url=official_link,
+            success=False,
+            error="Failed to generate summary. Please visit the official portal directly."
+        )
 
 
 @app.post("/api/stt")

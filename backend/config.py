@@ -12,7 +12,6 @@ LLM_API_KEY = os.getenv("LLM_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "claude-sonnet-5-5")
 
 # App Configuration
-USE_MOCK = os.getenv("USE_MOCK", "true").lower() == "true"
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 # STT/TTS Providers
