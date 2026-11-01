@@ -29,3 +29,5 @@ demo_cache/
 *.mp3
 server.log
 .env
+
+llm_cache/
