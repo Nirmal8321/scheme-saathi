@@ -15,6 +15,7 @@ class Profile(BaseModel):
     land_acres: Optional[float] = None
     caste_category: Optional[str] = None
     family_members: Optional[int] = None
+    has_lpg: Optional[bool] = None
 
 
 class SchemeResult(BaseModel):

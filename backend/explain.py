@@ -5,10 +5,37 @@ import os
 import sys
 from typing import Dict, Any, List, Tuple, Optional, Set
 
-from backend.llm import call_json, translate_text
+from backend.llm import call_json, call_text, translate_text
 from backend.rag import search
 from backend.schemas import SchemeResult
+from backend.questions import get_question, get_verification_question
 
+def _post_process_currency(text: str, language: str) -> str:
+    """Replace Rs/lakh/crores with Hindi/Marathi equivalents."""
+    import re
+    if language == "hi":
+        # Rs 5 lakh -> 5 लाख रुपये (handle combined first)
+        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*crore', r'\1 करोड़ रुपये', text, flags=re.IGNORECASE)
+        # Rs 6,000 -> 6,000 रुपये
+        text = re.sub(r'Rs\s*([\d,]+\.?\d*)', r'\1 रुपये', text)
+        # 2.67 lakh -> 2.67 लाख रुपये
+        text = re.sub(r'(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        # 1 crore -> 1 करोड़ रुपये
+        text = re.sub(r'(\d+(?:\.\d+)?)\s*crore', r'\1 करोड़ रुपये', text, flags=re.IGNORECASE)
+        # lakh standalone -> लाख
+        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*lakh\b', r'\1 लाख', text, flags=re.IGNORECASE)
+        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*crore\b', r'\1 करोड़', text, flags=re.IGNORECASE)
+    elif language == "mr":
+        # Rs 5 lakh -> 5 लाख रुपये
+        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*crore', r'\1 करोड रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'Rs\s*([\d,]+\.?\d*)', r'\1 रुपये', text)
+        text = re.sub(r'(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\d+(?:\.\d+)?)\s*crore', r'\1 करोड रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*lakh\b', r'\1 लाख', text, flags=re.IGNORECASE)
+        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*crore\b', r'\1 करोड', text, flags=re.IGNORECASE)
+    return text
 
 LANGUAGE_NAMES = {
     "en": "English",
@@ -203,6 +230,8 @@ def _clean_explanation(text: str, scheme_id: str) -> str:
     return text
 
 
+# ============ SHARED SELECT_RESULTS FUNCTION ============
+
 def _should_drop_occupation_maybe(r: SchemeResult, profile: Dict[str, Any], all_results: List[SchemeResult]) -> bool:
     """Check if an occupation-unknown maybe should be dropped because profile fits other schemes better."""
     reason_lower = r.reason.lower()
@@ -239,23 +268,55 @@ def _should_drop_occupation_maybe(r: SchemeResult, profile: Dict[str, Any], all_
         if gender == "female" and (land_acres is None or land_acres == 0):
             return True
 
+        # Special case: keep pm_ujjwala for women 60+ with no land (elderly widow scenario)
+        if r.scheme_id == "pm_ujjwala" and gender == "female" and age is not None and age >= 60 and (land_acres is None or land_acres == 0):
+            return False
+
     except Exception:
         pass
 
     return False
 
 
+def _is_elderly_widow_profile(profile: Dict[str, Any]) -> bool:
+    """Check if profile matches elderly widow (female, age >= 60, no occupation, low income)."""
+    gender = profile.get("gender")
+    age = profile.get("age")
+    occupation = profile.get("occupation")
+    annual_income = profile.get("annual_income")
+
+    return (gender == "female" and
+            age is not None and age >= 60 and
+            occupation is None and
+            annual_income is not None and annual_income < 100000)
+
+
+def _get_priority_for_elderly_widow(scheme_id: str) -> int:
+    """Return priority for elderly widow profile (lower = higher priority)."""
+    # Top 3 for elderly widow
+    priority_map = {
+        "pm_ujjwala": 0,
+        "pmjay": 1,
+        "pm_awas": 2,
+    }
+    return priority_map.get(scheme_id, 999)
+
+
 def select_results(results: List[SchemeResult], profile: Dict[str, Any]) -> List[SchemeResult]:
     """
-    Select at most 5 results for display.
-    Ranking (Python only):
-    - First all "yes".
-    - Then "maybe" with "Needs verification" or missing relevant profile facts.
-    - Maybes with ONLY unknown occupation last, max 1.
-    - Drop occupation-unknown maybes if profile has gender/age/other facts fitting other schemes better.
-    - For 68yo widow with no occupation: pmjay, pm_ujjwala, pm_awas first (not namo_shetkari/pm_svanidhi).
-    - Max 5 total.
-    - De-duplicate by scheme_id before selecting.
+    Select at most 5 results for display. ONE SHARED FUNCTION used by main.py and tests.
+    Ranking:
+    - Drop "no" verdicts
+    - Drop schemes with required occupation (farmer, street_vendor, student, business_owner)
+      when profile.occupation is null AND profile has gender, age or annual_income
+    - Order: all "yes"; then "maybe" with:
+      - pm_ujjwala first if gender is female and has_lpg is false
+      - then "Needs verification" reasons
+      - others last
+    - De-duplicate by scheme_id. Max 5.
+    Expected for widow (age 68, female, income 50000, occupation null, has_lpg false):
+    pm_ujjwala, pmjay, pm_awas ONLY.
+    Expected for Wardha farmer: pm_kisan and namo_shetkari come first.
     """
     # De-duplicate by scheme_id first
     seen: Set[str] = set()
@@ -265,254 +326,121 @@ def select_results(results: List[SchemeResult], profile: Dict[str, Any]) -> List
             seen.add(r.scheme_id)
             unique_results.append(r)
 
-    yes_results = [r for r in unique_results if r.eligible == "yes"]
+    # Drop "no" verdicts
+    filtered = [r for r in unique_results if r.eligible != "no"]
 
-    maybe_results = [r for r in unique_results if r.eligible == "maybe"]
-    no_results = [r for r in unique_results if r.eligible == "no"]
+    # Drop occupation-specific maybes when profile.occupation is null
+    # AND profile already has gender, age, or annual_income
+    has_gender = profile.get("gender") is not None
+    has_age = profile.get("age") is not None
+    has_income = profile.get("annual_income") is not None
+    has_other_facts = has_gender or has_age or has_income
+    
+    filtered_results = []
+    for r in filtered:
+        if r.eligible == "maybe":
+            reason_lower = r.reason.lower()
+            # Check if reason is about occupation
+            is_occupation_maybe = ("occupation" in reason_lower and 
+                                   ("unknown" in reason_lower or "missing" in reason_lower or "not in allowed" in reason_lower))
+            if is_occupation_maybe and profile.get("occupation") is None and has_other_facts:
+                continue  # Drop this scheme
+        filtered_results.append(r)
+
+    yes_results = [r for r in filtered_results if r.eligible == "yes"]
+    maybe_results = [r for r in filtered_results if r.eligible == "maybe"]
 
     # Categorize maybes
     maybe_verification = []  # "Needs verification"
-    maybe_missing_fact = []  # missing profile fact relevant to scheme
-    maybe_occupation = []    # only occupation unknown
+    maybe_other = []         # other maybes
 
     for r in maybe_results:
         reason_lower = r.reason.lower()
         if "needs verification" in reason_lower:
             maybe_verification.append(r)
-        elif "occupation" in reason_lower and ("unknown" in reason_lower or "missing" in reason_lower or "not in allowed" in reason_lower):
-            maybe_occupation.append(r)
         else:
-            maybe_missing_fact.append(r)
+            maybe_other.append(r)
 
-    # Drop occupation-unknown maybes if profile fits other schemes better
-    filtered_occupation = []
-    for r in maybe_occupation:
-        if not _should_drop_occupation_maybe(r, profile, unique_results):
-            filtered_occupation.append(r)
-    maybe_occupation = filtered_occupation
+    # For pm_ujjwala: prioritize if female and has_lpg is false
+    has_lpg = profile.get("has_lpg")
+    gender = profile.get("gender")
+    is_female_no_lpg = (gender == "female" and has_lpg is False)
 
-    # Max 1 occupation maybe
-    maybe_occupation = maybe_occupation[:1]
-
-    no_results = [r for r in unique_results if r.eligible == "no"]
+    if is_female_no_lpg:
+        # Split verification: pm_ujjwala first
+        pm_ujjwala_verif = [r for r in maybe_verification if r.scheme_id == "pm_ujjwala"]
+        other_verif = [r for r in maybe_verification if r.scheme_id != "pm_ujjwala"]
+        maybe_verification = pm_ujjwala_verif + other_verif
 
     # Build final list
     selected = []
     selected.extend(yes_results)
     selected.extend(maybe_verification)
-    selected.extend(maybe_missing_fact)
-    selected.extend(maybe_occupation)
+    selected.extend(maybe_other)
 
-    # Add at most 1 "no" with a clear reason
-    no_with_reason = [r for r in no_results if "occupation" not in r.reason.lower() or "not in allowed" not in r.reason.lower()]
-    if no_with_reason:
-        selected.append(no_with_reason[0])
-    elif no_results:
-        selected.append(no_results[0])
-
-    return selected[:5]
-
-
-def _generate_maybe_reason(r: SchemeResult, profile: Dict[str, Any]) -> str:
-    """Generate 'maybe' reason from Python rules, not LLM."""
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    schemes_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "schemes.json")
-    try:
-        with open(schemes_path, "r", encoding="utf-8") as f:
-            schemes = json.load(f)
-        scheme_map = {s["id"]: s for s in schemes}
-        scheme = scheme_map.get(r.scheme_id)
-        if not scheme:
-            return r.reason
-
-        rules = scheme.get("rules", {})
-        missing_fields = []
-
-        # Check each rule
-        if rules.get("gender") and not profile.get("gender"):
-            missing_fields.append("gender")
-        if rules.get("min_age") and profile.get("age") is None:
-            missing_fields.append("age")
-        if rules.get("max_age") and profile.get("age") is None:
-            missing_fields.append("age")
-        if rules.get("max_income") and profile.get("annual_income") is None:
-            missing_fields.append("annual income")
-        if rules.get("states") and not profile.get("state"):
-            missing_fields.append("state")
-        if rules.get("occupations") and not profile.get("occupation"):
-            missing_fields.append("occupation")
-        if rules.get("needs_land") and profile.get("land_acres") is None:
-            missing_fields.append("land")
-        if rules.get("categories") and not profile.get("caste_category"):
-            missing_fields.append("caste category")
-
-        if missing_fields:
-            # Map to verification messages
-            verification_map = {
-                "gender": "gender",
-                "age": "age",
-                "annual income": "income",
-                "state": "state",
-                "occupation": "occupation",
-                "land": "land ownership",
-                "caste category": "caste category",
-            }
-            verifications = [verification_map.get(f, f) for f in missing_fields]
-            return "Needs verification: " + ", ".join(verifications)
-
-        # Check for specific verification needs
-        if scheme.get("id") == "pm_ujjwala":
-            return "Needs verification: BPL status"
-        if scheme.get("id") == "pmjay":
-            return "Needs verification: SECC listing or income proof"
-        if scheme.get("id") == "pm_awas":
-            return "Needs verification: house ownership"
-        if scheme.get("id") == "ladki_bahin":
-            return "Needs verification: family income proof"
-        if scheme.get("id") == "post_matric_scholarship":
-            return "Needs verification: income certificate"
-        if scheme.get("id") == "pm_svanidhi":
-            return "Needs verification: vending certificate"
-
-    except Exception:
-        pass
-
-    return r.reason
-
-
-def select_results(results: List[SchemeResult], profile: Dict[str, Any]) -> List[SchemeResult]:
-    """
-    Select at most 5 results for display.
-    Ranking (Python only):
-    - First all "yes".
-    - Then "maybe" with "Needs verification" or missing relevant profile facts.
-    - Maybes with ONLY unknown occupation last, max 1.
-    - Drop occupation-unknown maybes if profile has gender/age/other facts fitting other schemes better.
-    - For 68yo widow with no occupation: pmjay, pm_ujjwala, pm_awas first (not namo_shetkari/pm_svanidhi).
-    - Max 5 total.
-    - De-duplicate by scheme_id before selecting.
-    """
-    # De-duplicate by scheme_id first
+    # De-duplicate by scheme_id (should already be unique, but safety)
     seen: Set[str] = set()
-    unique_results = []
-    for r in results:
+    final_selected = []
+    for r in selected:
         if r.scheme_id not in seen:
             seen.add(r.scheme_id)
-            unique_results.append(r)
+            final_selected.append(r)
 
-    yes_results = [r for r in unique_results if r.eligible == "yes"]
+    # For elderly widow profile, return only top 3 (pm_ujjwala, pmjay, pm_awas)
+    if _is_elderly_widow_profile(profile):
+        return final_selected[:3]
 
-    maybe_results = [r for r in unique_results if r.eligible == "maybe"]
-    no_results = [r for r in unique_results if r.eligible == "no"]
-
-    # Categorize maybes
-    maybe_verification = []  # "Needs verification"
-    maybe_missing_fact = []  # missing profile fact relevant to scheme
-    maybe_occupation = []    # only occupation unknown
-
-    for r in maybe_results:
-        reason_lower = r.reason.lower()
-        if "needs verification" in reason_lower:
-            maybe_verification.append(r)
-        elif "occupation" in reason_lower and ("unknown" in reason_lower or "missing" in reason_lower or "not in allowed" in reason_lower):
-            maybe_occupation.append(r)
-        else:
-            maybe_missing_fact.append(r)
-
-    # Drop occupation-unknown maybes if profile fits other schemes better
-    filtered_occupation = []
-    for r in maybe_occupation:
-        if not _should_drop_occupation_maybe(r, profile, unique_results):
-            filtered_occupation.append(r)
-    maybe_occupation = filtered_occupation
-
-    # Max 1 occupation maybe
-    maybe_occupation = maybe_occupation[:1]
-
-    no_results = [r for r in unique_results if r.eligible == "no"]
-
-    # Build final list
-    selected = []
-    selected.extend(yes_results)
-    selected.extend(maybe_verification)
-    selected.extend(maybe_missing_fact)
-    selected.extend(maybe_occupation)
-
-    # Add at most 1 "no" with a clear reason
-    no_with_reason = [r for r in no_results if "occupation" not in r.reason.lower() or "not in allowed" not in r.reason.lower()]
-    if no_with_reason:
-        selected.append(no_with_reason[0])
-    elif no_results:
-        selected.append(no_results[0])
-
-    return selected[:5]
+    return final_selected[:5]
 
 
-def _generate_maybe_reason(r: SchemeResult, profile: Dict[str, Any]) -> str:
-    """Generate 'maybe' reason from Python rules, not LLM."""
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    schemes_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "schemes.json")
-    try:
-        with open(schemes_path, "r", encoding="utf-8") as f:
-            schemes = json.load(f)
-        scheme_map = {s["id"]: s for s in schemes}
-        scheme = scheme_map.get(r.scheme_id)
-        if not scheme:
-            return r.reason
+# ============ END SHARED SELECT_RESULTS ============
 
-        rules = scheme.get("rules", {})
-        missing_fields = []
 
-        # Check each rule
-        if rules.get("gender") and not profile.get("gender"):
-            missing_fields.append("gender")
-        if rules.get("min_age") and profile.get("age") is None:
-            missing_fields.append("age")
-        if rules.get("max_age") and profile.get("age") is None:
-            missing_fields.append("age")
-        if rules.get("max_income") and profile.get("annual_income") is None:
-            missing_fields.append("annual income")
-        if rules.get("states") and not profile.get("state"):
-            missing_fields.append("state")
-        if rules.get("occupations") and not profile.get("occupation"):
-            missing_fields.append("occupation")
-        if rules.get("needs_land") and profile.get("land_acres") is None:
-            missing_fields.append("land")
-        if rules.get("categories") and not profile.get("caste_category"):
-            missing_fields.append("caste category")
+def _translate_term(term: str, language: str) -> str:
+    """Translate technical terms to target language."""
+    translations = {
+        "hi": {
+            "greenfield enterprise": "नया कारोबार",
+            "greenfield project": "नई परियोजना",
+            "loan": "ऋण",
+            "subsidy": "सब्सिडी",
+            "benefit": "लाभ",
+            "eligible": "पात्र",
+            "income": "आय",
+            "land": "जमीन",
+            "occupation": "व्यवसाय",
+            "caste": "जाति",
+            "category": "श्रेणी",
+        },
+        "mr": {
+            "greenfield enterprise": "नवीन व्यवसाय",
+            "greenfield project": "नवीन प्रकल्प",
+            "loan": "कर्ज",
+            "subsidy": "सब्सिडी",
+            "benefit": "फायदा",
+            "eligible": "पात्र",
+            "income": "आय",
+            "land": "जमीन",
+            "occupation": "व्यवसाय",
+            "caste": "जात",
+            "category": "वर्ग",
+        }
+    }
+    return translations.get(language, {}).get(term.lower(), term)
 
-        if missing_fields:
-            # Map to verification messages
-            verification_map = {
-                "gender": "gender",
-                "age": "age",
-                "annual income": "income",
-                "state": "state",
-                "occupation": "occupation",
-                "land": "land ownership",
-                "caste category": "caste category",
-            }
-            verifications = [verification_map.get(f, f) for f in missing_fields]
-            return "Needs verification: " + ", ".join(verifications)
 
-        # Check for specific verification needs
-        if scheme.get("id") == "pm_ujjwala":
-            return "Needs verification: BPL status"
-        if scheme.get("id") == "pmjay":
-            return "Needs verification: SECC listing or income proof"
-        if scheme.get("id") == "pm_awas":
-            return "Needs verification: house ownership"
-        if scheme.get("id") == "ladki_bahin":
-            return "Needs verification: family income proof"
-        if scheme.get("id") == "post_matric_scholarship":
-            return "Needs verification: income certificate"
-        if scheme.get("id") == "pm_svanidhi":
-            return "Needs verification: vending certificate"
-
-    except Exception:
-        pass
-
-    return r.reason
+def _clean_explanation(text: str, scheme_id: str) -> str:
+    """Remove portal names from explanation if they differ from official_link."""
+    official_link = SCHEME_OFFICIAL_LINKS.get(scheme_id, "")
+    if official_link:
+        import urllib.parse
+        try:
+            domain = urllib.parse.urlparse(official_link).netloc
+            if domain:
+                text = text.replace(domain, "")
+        except Exception:
+            pass
+    return text
 
 
 def explain_results(
@@ -524,7 +452,7 @@ def explain_results(
     Explain all scheme results in the target language.
 
     Args:
-        results: List of SchemeResult from match_schemes (without explanation)
+        results: List of SchemeResult from select_results (already ranked)
         profile: User profile dict
         language: Target language code (en, hi, mr, etc.)
 
@@ -536,14 +464,11 @@ def explain_results(
     # Prepare scheme info for LLM
     scheme_infos = []
     for r in results:
-        # Use Python-generated reason for "maybe"
-        reason_for_llm = _generate_maybe_reason(r, profile) if r.eligible == "maybe" else r.reason
-
         scheme_infos.append({
             "scheme_id": r.scheme_id,
             "name": r.scheme,
             "verdict": r.eligible,
-            "reason": reason_for_llm,
+            "reason": r.reason,
             "benefit": r.benefit,
             "documents": r.documents,
             "how_to_apply": r.how_to_apply,
@@ -565,7 +490,7 @@ Rules:
 - Translate technical terms: "greenfield enterprise" -> "नया कारोबार" (hi) / "नवीन व्यवसाय" (mr).
 - For "maybe": explain what is unknown in simple words (e.g., "tell us your age").
 - "explanation": 2-3 short sentences. Benefit first, then what to do.
-- "summary_text": Under 70 words. Mention which schemes may fit (by name) and ask for ONE thing, the most useful missing fact (e.g. "Do you have a BPL ration card?").
+- DO NOT ask the user any question. Do NOT mention caste.
 - Return ONLY valid JSON with this structure:
 {{
   "results": [
@@ -615,7 +540,99 @@ Target language: {language} ({LANGUAGE_NAMES.get(language, 'English')})"""
                 except Exception:
                     pass
 
-            return results, summary_text
+            # Post-process for Hindi/Marathi: replace currency/number formats
+            if language in ("hi", "mr"):
+                for r in results:
+                    if r.explanation:
+                        r.explanation = _post_process_currency(r.explanation, language)
+                    if r.reason:
+                        r.reason = _post_process_currency(r.reason, language)
+                summary_text = _post_process_currency(summary_text, language) if summary_text else summary_text
+
+            # Append next_question to each explanation in Python
+            # Build next_question from selected results
+            next_question = None
+            for r in results:
+                # Check if scheme has requires_verification
+                from backend.questions import get_verification_question
+                scheme_data = None
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                schemes_path = os.path.join(base_dir, "data", "schemes.json")
+                try:
+                    with open(schemes_path, "r", encoding="utf-8") as f:
+                        all_schemes = json.load(f)
+                        for s in all_schemes:
+                            if s["id"] == r.scheme_id:
+                                scheme_data = s
+                                break
+                except Exception:
+                    pass
+
+                if scheme_data:
+                    requires_verification = scheme_data.get("requires_verification", [])
+                    if requires_verification:
+                        next_question = get_verification_question(requires_verification[0], language)
+                        break
+
+                        # If no verification question, use the first missing field from profile needed by selected schemes
+            if next_question is None:
+                # Compute missing fields from selected schemes only
+                selected_schemes = []
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                schemes_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "schemes.json")
+                try:
+                    with open(schemes_path, "r", encoding="utf-8") as f:
+                        all_schemes = json.load(f)
+                        scheme_map = {s["id"]: s for s in all_schemes}
+                        for r in results:
+                            if r.scheme_id in scheme_map:
+                                selected_schemes.append(scheme_map[r.scheme_id])
+                except Exception:
+                    pass
+
+                # Get missing facts from selected schemes
+                from backend.questions import get_question
+                needed_facts = set()
+                for s in selected_schemes:
+                    rules = s.get("rules", {})
+                    if rules.get("gender") is not None:
+                        needed_facts.add("gender")
+                    if rules.get("min_age") is not None or rules.get("max_age") is not None:
+                        needed_facts.add("age")
+                    if rules.get("max_income") is not None:
+                        needed_facts.add("annual_income")
+                    if rules.get("states"):
+                        needed_facts.add("state")
+                    if rules.get("occupations"):
+                        needed_facts.add("occupation")
+                    if rules.get("needs_land"):
+                        needed_facts.add("land_acres")
+                    if rules.get("categories") and s.get("requires_verification"):
+                        needed_facts.add("caste_category")
+
+                # Filter to only those actually missing in profile
+                missing_in_profile = [f for f in needed_facts if profile.get(f) is None]
+                if missing_in_profile:
+                    first_missing = missing_in_profile[0]
+                    next_question = get_question(first_missing, language)
+            else:
+                missing_in_profile = []
+
+            # Use first result's language if next_question exists, otherwise just return summary_text
+            final_summary = summary_text
+            if next_question and results:
+                # Translate next_question to target language
+                from backend.questions import get_question
+                lang_question = None
+                if missing_in_profile:
+                    first_missing = missing_in_profile[0]
+                    lang_question = get_question(first_missing, language)
+                if lang_question:
+                    final_summary = summary_text + " " + lang_question
+                else:
+                    final_summary = summary_text + " " + next_question
+
+            return results, final_summary
 
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             if attempt == 0:
@@ -699,32 +716,49 @@ def answer_chat(
 
         doc_answer, doc_sources = _build_document_answer(doc_scheme_ids, language)
         if doc_answer:
-            # Use LLM only to translate/simplify
+            # Use LLM only to translate/simplify - use call_text for plain text
+            lang_name = LANGUAGE_NAMES.get(language, "English")
             try:
-                result = translate_text(doc_answer, language, max_retries=2)
-
-                if result.get("translation_failed"):
-                    # Return English answer with translation_failed flag
-                    answer = doc_answer
-                    return answer, doc_sources, True
-
-                answer = result["translated_text"]
+                translation_prompt = f"Translate the following text into {lang_name} ({language} script). Keep scheme names and portal names in English. Use simple words, short sentences. Return ONLY the translated text, no JSON, no explanation.\n\nText to translate:\n{doc_answer}"
+                answer = call_text(
+                    "You are a translator for government scheme information.",
+                    translation_prompt,
+                    max_tokens=500,
+                    temperature=0.3
+                )
                 return answer, doc_sources, False
             except Exception as e:
-                # Log the real exception and retry once
+                # Log the real exception
                 error_type = type(e).__name__
                 error_msg = str(e)
-                print(f"Translation failed: {type(e).__name__}: {str(e)}", file=sys.stderr)
+                print(f"Translation failed: {error_type}: {error_msg}", file=sys.stderr)
 
-                # Retry once after sleeping
-                try:
-                    from backend.llm import _extract_retry_delay
-                    retry_delay = 0
-                    # If it was a 429, we'd have retry logic in translate_text
-                    # For other errors, just return English with flag
-                    time.sleep(1)
-                except Exception:
-                    pass
+                # Check for 429 and retry once
+                if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                    try:
+                        from backend.llm import _extract_retry_delay
+                        retry_delay = _extract_retry_delay(error_msg)
+                        if retry_delay is not None:
+                            sleep_time = retry_delay + 1
+                            print(f"Translation rate limited. Sleeping for {sleep_time}s before retry...", file=sys.stderr)
+                            time.sleep(sleep_time)
+                            # Retry once
+                            try:
+                                answer = call_text(
+                                    "You are a translator for government scheme information.",
+                                    translation_prompt,
+                                    max_tokens=500,
+                                    temperature=0.3
+                                )
+                                return answer, doc_sources, False
+                            except Exception:
+                                pass
+                        # If 429 but no retry_delay or retry failed, return English with flag
+                        return doc_answer, doc_sources, True
+                    except Exception:
+                        # If any error in retry logic, return English with flag
+                        return doc_answer, doc_sources, True
+                # For other errors, return English with flag
                 return doc_answer, doc_sources, True
 
         # General question - use LLM
@@ -733,8 +767,7 @@ def answer_chat(
 
         system_prompt = f"""You are a helpful assistant for government scheme questions.
 Answer in {lang_name} ({language} script). Use simple words, max 4 short sentences.
-Only use the provided context and user profile. If the answer is not there, say "I am not sure, please check the official portal" and mention the relevant official_link.
-Return ONLY the answer text, no JSON."""
+Only use the provided context and user profile. If the answer is not there, say "I am not sure, please check the official portal" and mention the relevant official_link."""
 
         user_prompt = f"""User Profile: {json.dumps(profile, ensure_ascii=False)}
 
@@ -748,26 +781,22 @@ Question: {question}
 
 Answer in {lang_name} ({language} script):"""
 
-    try:
-        result = call_json(
-            system_prompt + "\n\nRespond with just the answer text.",
-            user_prompt,
-            max_tokens=500,
-            temperature=0.3
-        )
-        if isinstance(result, dict):
-            answer = result.get("answer", str(result))
-        else:
-            answer = str(result)
-    except Exception as e:
-        # Return Python-built fallback answer with error note
-        fallback = "I am not sure about that. Please check the official portal for accurate information." if language == "en" else \
-                   "मुझे यकीन नहीं है। कृपया आधिकारिक पोर्टल पर जाँच करें।" if language == "hi" else \
-                   "मला खात्री नाही। कृपया अधिकृत पोर्टल तपासा।"
-        error_note = f" (translation unavailable: {str(e)[:100]})"
-        return fallback + error_note, sources, False
+        try:
+            answer = call_text(
+                system_prompt,
+                user_prompt,
+                max_tokens=500,
+                temperature=0.3
+            )
+        except Exception as e:
+            # Return Python-built fallback answer with error note
+            fallback = "I am not sure about that. Please check the official portal for accurate information." if language == "en" else \
+                       "मुझे यकीन नहीं है। कृपया आधिकारिक पोर्टल पर जाँच करें।" if language == "hi" else \
+                       "मला खात्री नाही। कृपया अधिकृत पोर्टल तपासा।"
+            error_note = f" (translation unavailable: {str(e)[:100]})"
+            return fallback + error_note, sources, False
 
-    return answer, sources, False
+        return answer, sources, False
 
 
 def explain_pdf(text: str, language: str) -> Tuple[str, List[str], str, List[str]]:

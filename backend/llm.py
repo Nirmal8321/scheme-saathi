@@ -261,6 +261,90 @@ PROVIDER_MAP = {
 }
 
 
+def call_text(system: str, user: str, max_tokens: int = 1500, temperature: float = 0.3) -> str:
+    """
+    Call LLM with system and user prompts, return plain text (no JSON parsing).
+
+    Args:
+        system: System prompt
+        user: User prompt
+        max_tokens: Maximum tokens for response
+        temperature: Temperature for generation (default 0.3 for natural language)
+
+    Returns:
+        Plain text response
+
+    Raises:
+        ValueError: If provider not supported
+    """
+    provider = LLM_PROVIDER.lower()
+
+    if provider not in PROVIDER_MAP:
+        raise ValueError(f"Unsupported LLM_PROVIDER: {provider}. Supported: {list(PROVIDER_MAP.keys())}")
+
+    if not LLM_API_KEY:
+        raise ValueError("LLM_API_KEY not set in environment")
+
+    # Check cache first
+    cache_key = _get_cache_key(system, user, LLM_MODEL, temperature)
+    if _should_use_cache():
+        cached = _load_from_cache(cache_key)
+        if cached is not None:
+            print(f"Cache hit for key {cache_key[:8]}...", file=sys.stderr)
+            # Cache stores JSON, but we want text. If cached is dict, extract text
+            if isinstance(cached, dict):
+                return cached.get("answer", cached.get("translated_text", str(cached)))
+            return str(cached)
+
+    # Call with retry logic - need a text-returning version of provider
+    def call_text_func(sys_prompt, usr_prompt, max_tok, temp):
+        provider = LLM_PROVIDER.lower()
+        if provider == "anthropic":
+            import anthropic
+            client = anthropic.Anthropic(api_key=LLM_API_KEY)
+            response = client.messages.create(
+                model=LLM_MODEL,
+                max_tokens=max_tok,
+                temperature=temp,
+                system=sys_prompt,
+                messages=[{"role": "user", "content": usr_prompt}]
+            )
+            return response.content[0].text
+        elif provider == "gemini":
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=LLM_API_KEY)
+            response = client.models.generate_content(
+                model=LLM_MODEL,
+                contents=f"{sys_prompt}\n\n{usr_prompt}",
+                config=types.GenerateContentConfig(temperature=temp, max_output_tokens=max_tok)
+            )
+            return response.text
+        elif provider == "openai":
+            from openai import OpenAI
+            client = OpenAI(api_key=LLM_API_KEY)
+            response = client.chat.completions.create(
+                model=LLM_MODEL,
+                max_tokens=max_tok,
+                temperature=temp,
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": usr_prompt}
+                ]
+            )
+            return response.choices[0].message.content
+        else:
+            raise ValueError(f"Unsupported provider: {provider}")
+
+    result = _call_with_retry(call_text_func, system, user, max_tokens, temperature)
+
+    # Save to cache
+    if _should_use_cache():
+        _save_to_cache(cache_key, {"answer": result})
+
+    return result
+
+
 def call_json(system: str, user: str, max_tokens: int = 1500, temperature: float = 0.0) -> Dict[str, Any]:
     """
     Call LLM with system and user prompts, return parsed JSON.

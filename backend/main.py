@@ -1,155 +1,253 @@
-"""FastAPI app entry point with routes for analyze, chat, explain-pdf, health, stt, tts."""
+"""FastAPI application for Scheme Saathi backend."""
+import os
+import json
+import logging
+from typing import Dict, Any, List, Optional
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response, RedirectResponse
-from backend.config import USE_MOCK
-from backend.schemas import (
-    AnalyzeRequest, AnalyzeResponse,
-    ChatRequest, ChatResponse,
-    PdfExplainResponse,
-    SttResponse, TtsRequest,
-    HealthResponse, ErrorResponse
-)
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
+from typing import Literal
 
-# Import mock data only when needed
-if USE_MOCK:
-    from backend.mock_data import (
-        get_mock_analyze_response,
-        get_mock_chat_response,
-        get_mock_pdf_explain_response
-    )
+from backend.extract import extract_profile
+from backend.match import match_schemes
+from backend.explain import explain_results, select_results, answer_chat, explain_pdf
+from backend.pdf_reader import extract_text
 
-app = FastAPI(
-    title="Scheme Saathi API",
-    description="Voice-first government scheme eligibility checker",
-    version="0.1.0",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
+# Enable LLM cache by default
+os.environ.setdefault("LLM_CACHE", "true")
 
-# Enable CORS for all origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(title="Scheme Saathi API", version="1.0.0")
+
+# Load schemes data
+SCHEMES_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "schemes.json")
+with open(SCHEMES_PATH, "r", encoding="utf-8") as f:
+    SCHEMES = json.load(f)
+SCHEME_MAP = {s["id"]: s for s in SCHEMES}
 
 
-@app.get("/", include_in_schema=False)
-async def root():
-    """Root endpoint - redirects to API documentation."""
-    return RedirectResponse(url="/docs")
+# Pydantic models for request/response
+class AnalyzeRequest(BaseModel):
+    text: str
+    language: Literal["en", "hi", "mr", "ta", "bn", "te", "gu", "kn"]
+    profile_override: Optional[Dict[str, Any]] = None
 
 
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    """Favicon endpoint - returns 204 No Content to avoid 404."""
-    return Response(status_code=204)
+class ChatRequest(BaseModel):
+    question: str
+    profile: Dict[str, Any]
+    language: Literal["en", "hi", "mr", "ta", "bn", "te", "gu", "kn"]
+    history: List[Dict[str, str]] = []
+
+
+class AnalyzeResponse(BaseModel):
+    profile: Dict[str, Any]
+    missing_fields: List[str]
+    results: List[Dict[str, Any]]
+    summary_text: str
+    language: str
+    disclaimer: str = "Verify at official portal before applying."
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: List[str]
+    translation_failed: bool = False
+
+
+class PdfExplainResponse(BaseModel):
+    summary: str
+    key_points: List[str]
+    who_is_affected: str
+    deadlines: List[str]
+    language: str
+
+
+class ErrorResponse(BaseModel):
+    error: str
+
+
+# Helper functions
+def get_scheme_ids_for_profile(profile: Dict[str, Any]) -> List[str]:
+    """Get matched scheme IDs for a profile using Python rules only (no LLM)."""
+    from backend.rules import check_all_schemes
+    results = check_all_schemes(profile, SCHEMES)
+    return [r["scheme_id"] for r in results if r["verdict"] in ("yes", "maybe")]
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
-    """Global exception handler - returns friendly error messages."""
+    logger.exception("Unhandled error: %s", exc)
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal server error. Please try again."}
+        content={"error": "Internal server error. Please try again later."}
     )
 
 
-@app.get("/api/health", response_model=HealthResponse)
-async def health():
-    """Health check endpoint."""
-    return HealthResponse(status="ok", mock=USE_MOCK)
+@app.get("/api/health")
+async def health_check():
+    return {"status": "ok", "mock": os.getenv("USE_MOCK", "false").lower() == "true"}
 
 
 @app.post("/api/analyze", response_model=AnalyzeResponse)
 async def analyze(request: AnalyzeRequest):
     """
-    Main flow: text in, full eligibility result out.
-    Returns mock data when USE_MOCK=true.
+    Main analysis endpoint: extract profile, match schemes, select top results, explain in language.
+    Max 3 LLM calls per request (extract, match uses rules, explain uses 1 LLM call).
     """
     try:
-        if USE_MOCK:
-            return get_mock_analyze_response(request.language)
+        # 1. Extract profile from text
+        profile, missing = extract_profile(request.text, debug=False)
+        profile_dict = profile.model_dump()
 
-        # TODO: Implement real analysis pipeline
-        # 1. Extract profile using LLM #1
-        # 2. Search schemes via RAG
-        # 3. Match eligibility using LLM #2
-        # 4. Generate explanations using LLM #3
-        raise HTTPException(status_code=501, detail="Real backend not implemented yet")
+        # Merge profile_override (override wins)
+        if request.profile_override:
+            profile_dict.update(request.profile_override)
 
-    except HTTPException:
-        raise
+        # 2. Match schemes using Python rules
+        results = match_schemes(profile_dict, request.text)
+
+        # 3. Select top results
+        selected = select_results(results, profile_dict)
+
+        # 4. Explain results (1 LLM call)
+        explained_results, summary_text = explain_results(selected, profile_dict, request.language)
+
+        # Prepare response
+        results_list = []
+        for r in explained_results:
+            results_list.append({
+                "scheme_id": r.scheme_id,
+                "scheme": r.scheme,
+                "eligible": r.eligible,
+                "reason": r.reason,
+                "benefit": r.benefit,
+                "documents": r.documents,
+                "how_to_apply": r.how_to_apply,
+                "official_link": r.official_link,
+                "source_quote": r.source_quote,
+                "explanation": r.explanation,
+            })
+
+        # NEW - compute only from selected schemes:
+        # Get required fields from selected schemes only
+        needed_facts = set()
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        schemes_path = os.path.join(base_dir, "data", "schemes.json")
+        with open(schemes_path, "r", encoding="utf-8") as f:
+            all_schemes = json.load(f)
+        scheme_map = {s["id"]: s for s in all_schemes}
+        
+        for r in explained_results:
+            if r.scheme_id in scheme_map:
+                s = scheme_map[r.scheme_id]
+                rules = s.get("rules", {})
+                if rules.get("gender") is not None:
+                    needed_facts.add("gender")
+                if rules.get("min_age") is not None or rules.get("max_age") is not None:
+                    needed_facts.add("age")
+                if rules.get("max_income") is not None:
+                    needed_facts.add("annual_income")
+                if rules.get("states"):
+                    needed_facts.add("state")
+                if rules.get("occupations"):
+                    needed_facts.add("occupation")
+                if rules.get("needs_land"):
+                    needed_facts.add("land_acres")
+                # Only add caste_category if scheme explicitly requires it
+                if rules.get("categories") and any(cat in ["SC", "ST", "OBC", "EWS"] for cat in rules.get("categories", [])):
+                    needed_facts.add("caste_category")
+
+        missing_fields = [f for f in needed_facts if profile_dict.get(f) is None]
+
+        return AnalyzeResponse(
+            profile=profile_dict,
+            missing_fields=missing_fields,
+            results=results_list,
+            summary_text=summary_text,
+            language=request.language
+        )
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+        logger.exception("Error in /api/analyze")
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            raise HTTPException(status_code=429, detail="The AI is busy, please try again in a minute")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """
-    Follow-up question about the results.
-    Returns mock data when USE_MOCK=true.
+    Follow-up chat endpoint. Uses matched scheme IDs from profile for context.
     """
     try:
-        if USE_MOCK:
-            return get_mock_chat_response(request.question, request.language)
+        # Recompute matched scheme IDs from profile (Python rules only)
+        matched_scheme_ids = get_scheme_ids_for_profile(request.profile)
 
-        # TODO: Implement real chat with LLM #3
-        raise HTTPException(status_code=501, detail="Real backend not implemented yet")
+        answer, sources, translation_failed = answer_chat(
+            question=request.question,
+            profile=request.profile,
+            language=request.language,
+            history=request.history,
+            matched_scheme_ids=matched_scheme_ids
+        )
 
-    except HTTPException:
-        raise
+        return ChatResponse(
+            answer=answer,
+            sources=sources,
+            translation_failed=translation_failed
+        )
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
+        logger.exception("Error in /api/chat")
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            raise HTTPException(status_code=429, detail="The AI is busy, please try again in a minute")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/explain-pdf", response_model=PdfExplainResponse)
-async def explain_pdf(file: UploadFile = File(...), language: str = Form(...)):
+async def explain_pdf_endpoint(file: UploadFile = File(...), language: str = Form(default="en")):
     """
-    Explain uploaded PDF in plain language.
-    Returns mock data when USE_MOCK=true.
+    Explain a PDF document in the target language.
+    Rejects files over 10 MB or non-PDF files.
     """
     try:
-        if not file.filename.endswith(".pdf"):
-            raise HTTPException(status_code=400, detail="Only PDF files are supported")
+        # Validate file size (10 MB limit)
+        max_size = 10 * 1024 * 1024  # 10 MB
+        content = await file.read()
+        if len(content) > max_size:
+            raise HTTPException(status_code=400, detail="File too large. Maximum size is 10 MB.")
 
-        if USE_MOCK:
-            # Read and discard the file content for mock
-            await file.read()
-            return get_mock_pdf_explain_response(language)
+        # Validate PDF content type
+        if not file.content_type or not file.content_type.startswith("application/pdf"):
+            raise HTTPException(status_code=400, detail="File must be a PDF")
 
-        # TODO: Implement real PDF extraction and explanation
-        # 1. Extract text using PyMuPDF
-        # 2. Summarize using LLM
-        raise HTTPException(status_code=501, detail="Real backend not implemented yet")
+        # Extract text
+        text = extract_text(content)
+
+        # Explain PDF
+        summary, key_points, who_is_affected, deadlines = explain_pdf(text, language)
+
+        return PdfExplainResponse(
+            summary=summary,
+            key_points=key_points,
+            who_is_affected=who_is_affected,
+            deadlines=deadlines,
+            language=language
+        )
 
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"PDF explanation failed: {str(e)}")
-
-
-@app.post("/api/stt", response_model=SttResponse)
-async def stt(file: UploadFile = File(...), language: str = Form(...)):
-    """
-    Speech to text endpoint.
-    Returns 501 stub for now.
-    """
-    raise HTTPException(status_code=501, detail="STT not implemented yet")
-
-
-@app.post("/api/tts")
-async def tts(request: TtsRequest):
-    """
-    Text to speech endpoint.
-    Returns 501 stub for now.
-    """
-    raise HTTPException(status_code=501, detail="TTS not implemented yet")
+        logger.exception("Error in /api/explain-pdf")
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            raise HTTPException(status_code=429, detail="The AI is busy, please try again in a minute")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.000.0", port=8000)

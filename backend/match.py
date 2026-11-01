@@ -27,6 +27,7 @@ def match_schemes(profile: Dict[str, Any], query_text: str) -> List[SchemeResult
 
     Returns:
         List of SchemeResult objects (without explanation - that's LLM #3)
+        The LLM only provides source_quote; reason is set in Python.
     """
     # Load all schemes
     schemes = load_schemes()
@@ -81,7 +82,7 @@ def match_schemes(profile: Dict[str, Any], query_text: str) -> List[SchemeResult
     selected = []
     yes_count = sum(1 for sv in scheme_verdicts if sv["verdict"] == "yes")
     maybe_count = sum(1 for sv in scheme_verdicts if sv["verdict"] == "maybe")
-
+    
     for sv in scheme_verdicts:
         if len(selected) >= 5:
             break
@@ -90,21 +91,40 @@ def match_schemes(profile: Dict[str, Any], query_text: str) -> List[SchemeResult
             selected.append(sv)
         elif verdict == "maybe":
             selected.append(sv)
-        elif verdict == "no" and sv["rag_score"] > 0.3:  # Only include "no" if high RAG relevance
+        elif verdict == "no" and sv["rag_score"] > 0.3:
             selected.append(sv)
-
-    # Step 5: One LLM call for all selected schemes to get reasons and source_quotes
+    
+    # Step 5: One LLM call for all selected schemes to get source_quotes ONLY
     if selected:
         selected = _enrich_with_llm(selected, profile, scheme_contexts)
-
+    
     # Step 6: Build SchemeResult objects
     results = []
     for sv in selected:
+        ...
+    
+    # NEW: Return ALL 10 schemes with verdicts, no top-5 cut
+    # Step 4: One LLM call for ALL schemes to get source_quotes
+    scheme_verdicts = _enrich_with_llm(scheme_verdicts, profile, scheme_contexts)
+    
+    # Step 5: Build SchemeResult objects for ALL 10 schemes
+    results = []
+    for sv in scheme_verdicts:
         scheme = sv["scheme"]
         verdict = sv["verdict"]
-        # Use LLM-generated reason if available, else python reason
-        reason = sv.get("llm_reason") or (sv["python_reasons"][0] if sv["python_reasons"] else "Rule check passed")
-
+        # Reason is ALWAYS from Python (rules.py), never from LLM
+        reason = sv["python_reasons"][0] if sv["python_reasons"] else "Rule check passed"
+    
+        # Add verification reasons from requires_verification
+        verification_reasons = []
+        for vr in scheme.get("requires_verification", []):
+            verification_reasons.append(f"Needs verification: {vr.replace('_', ' ')}")
+    
+        if verification_reasons and verdict == "yes":
+            verdict = "maybe"
+        if verification_reasons:
+            reason = verification_reasons[0]
+    
         result = SchemeResult(
             scheme_id=scheme["id"],
             scheme=scheme["name"],
@@ -118,7 +138,7 @@ def match_schemes(profile: Dict[str, Any], query_text: str) -> List[SchemeResult
             explanation="",  # Will be filled by LLM #3
         )
         results.append(result)
-
+    
     return results
 
 
@@ -128,8 +148,9 @@ def _enrich_with_llm(
     scheme_contexts: Dict[str, List[str]]
 ) -> List[Dict[str, Any]]:
     """
-    Single LLM call to generate reason and source_quote for each selected scheme.
-    The LLM must NOT change the verdict - only provide reason and source_quote.
+    Single LLM call to generate source_quote for each selected scheme.
+    The LLM must NOT provide reason - only source_quote.
+    The verdict and reason come from Python (rules.py).
     """
     # Build context for LLM
     context_parts = []
@@ -150,17 +171,17 @@ def _enrich_with_llm(
     full_context = "\n\n".join(context_parts)
 
     system_prompt = """You are an eligibility matcher for government schemes.
-Given a user profile, scheme context, and Python rule-based verdicts, your task is to provide a short human-readable REASON and a SOURCE_QUOTE for each scheme.
+Given a user profile, scheme context, and Python rule-based verdicts, your task is to provide a SOURCE_QUOTE for each scheme.
 
 Rules:
 - NEVER change the verdict (yes/no/maybe). The verdict comes from deterministic rules.
-- For "yes": reason should explain why eligible (1 sentence). source_quote must be copied verbatim from context.
-- For "maybe": reason should explain what info is missing (1 sentence). source_quote from context.
-- For "no": reason should explain which rule failed (1 sentence). source_quote from context.
+- DO NOT provide reasons - those come from Python rules.
+- For each scheme, return a SOURCE_QUOTE copied verbatim from the context that supports the verdict.
+- If no relevant quote exists, return empty string.
 - Return ONLY valid JSON with this structure:
 {
   "results": [
-    {"scheme_id": "...", "reason": "...", "source_quote": "..."},
+    {"scheme_id": "...", "source_quote": "..."},
     ...
   ]
 }"""
@@ -169,7 +190,7 @@ Rules:
 
 {full_context}
 
-Return JSON with reason and source_quote for each scheme above."""
+Return JSON with source_quote for each scheme above."""
 
     try:
         llm_result = call_json(system_prompt, user_prompt, max_tokens=1500, temperature=0.0)
@@ -180,10 +201,9 @@ Return JSON with reason and source_quote for each scheme above."""
         for sv in selected:
             scheme_id = sv["scheme"]["id"]
             if scheme_id in llm_map:
-                sv["llm_reason"] = llm_map[scheme_id].get("reason", "")
                 sv["llm_source_quote"] = llm_map[scheme_id].get("source_quote", "")
     except Exception as e:
-        # If LLM fails, use python reasons
+        # If LLM fails, continue without source quotes
         pass
 
     return selected

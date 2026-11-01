@@ -59,6 +59,19 @@ def check_rules(profile: Dict[str, Any], scheme: Dict[str, Any]) -> Tuple[str, L
         else:
             missing_fields.append("gender")
 
+    # Special handling for pm_ujjwala with has_lpg field
+    if scheme.get("id") == "pm_ujjwala":
+        has_lpg = get_profile_value("has_lpg")
+        if has_lpg is True:
+            reasons.append("already has an LPG connection")
+            has_known_failure = True
+        elif has_lpg is False:
+            # Keep as maybe with BPL verification reason
+            pass
+        else:
+            # has_lpg is None (unknown)
+            pass
+
     # 3. Income check (max_income)
     max_income = rules.get("max_income")
     annual_income = get_profile_value("annual_income")
@@ -107,17 +120,25 @@ def check_rules(profile: Dict[str, Any], scheme: Dict[str, Any]) -> Tuple[str, L
         else:
             missing_fields.append("land_acres")
 
-    # 7. Caste category check
+    # 7. Caste category check - categories are for targeting, not hard requirements
+    # Only add to missing_fields if the scheme explicitly requires a category match
     allowed_categories = rules.get("categories", [])
     caste_category = get_profile_value("caste_category")
 
-    if allowed_categories:
-        if caste_category is not None:
-            if caste_category not in allowed_categories:
-                reasons.append(f"caste category '{caste_category}' not in allowed list {allowed_categories}")
-                has_known_failure = True
-        else:
-            missing_fields.append("caste_category")
+    # Only check categories if the scheme has a specific category requirement
+    # that is not just a targeting list. For now, we don't treat categories as hard requirements.
+    # The categories field is for targeting/priority, not eligibility.
+    # So we don't add caste_category to missing_fields.
+
+    # 7b. Income source check - some schemes require specific income sources
+    # (handled via max_income above)
+
+    # Collect requires_verification reasons from scheme
+    requires_verification = scheme.get("requires_verification", [])
+    verification_reasons = []
+    if requires_verification:
+        for item in requires_verification:
+            verification_reasons.append(f"Needs verification: {item.replace('_', ' ')}")
 
     # Determine verdict
     if has_known_failure:
@@ -127,13 +148,12 @@ def check_rules(profile: Dict[str, Any], scheme: Dict[str, Any]) -> Tuple[str, L
     else:
         verdict = "yes"
 
-    # Handle requires_verification: if verdict is "yes" but verification needed, downgrade to "maybe"
-    if verdict == "yes":
-        requires_verification = scheme.get("requires_verification", [])
-        if requires_verification:
+    # Add verification reasons to reasons regardless of verdict
+    # These are additional checks needed even if other rules pass
+    if verification_reasons:
+        if verdict == "yes":
             verdict = "maybe"
-            for item in requires_verification:
-                reasons.append(f"Needs verification: {item.replace('_', ' ')}")
+        reasons.extend(verification_reasons)
 
     return verdict, reasons, missing_fields
 

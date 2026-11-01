@@ -821,6 +821,29 @@ def _normalize_caste(text: str) -> Optional[str]:
     return None
 
 
+def _detect_lpg_status(text: str, profile_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Detect LPG-related keywords in text and set has_lpg accordingly."""
+    text_lower = text.lower()
+
+    # LPG-related keywords indicating NO LPG connection
+    lpg_negative_keywords = [
+        "gas connection nahi", "gas nahi", "no lpg", "no lpg connection",
+        "गॅस नाही", "गैस नाही", "गॅस कनेक्शन नाही", "गैस कनेक्शन नहीं",
+        "एलपीजी नाही", "lpg nahi", "lpg connection nahi"
+    ]
+
+    has_lpg = None
+    for keyword in lpg_negative_keywords:
+        if keyword in text.lower():
+            has_lpg = False
+            break
+
+    if has_lpg is not None:
+        profile_data["has_lpg"] = has_lpg
+
+    return profile_data
+
+
 def extract_profile(text: str, debug: bool = False) -> Tuple[Profile, List[str]]:
     """
     Extract user profile from free text input using LLM.
@@ -913,6 +936,9 @@ Output: {"occupation": "street_vendor", "age": 40, "gender": "male", "state": "M
 
     # Apply deterministic post-processing (gender, income)
     profile_data = _apply_post_processing(text, profile_data)
+
+    # Detect LPG-related keywords and set has_lpg
+    profile_data = _detect_lpg_status(text, profile_data)
 
     # Compute missing_fields from null fields in Python (not from LLM)
     missing_fields = _compute_missing_fields(profile_data)
