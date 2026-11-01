@@ -14,27 +14,28 @@ def _post_process_currency(text: str, language: str) -> str:
     """Replace Rs/lakh/crores with Hindi/Marathi equivalents."""
     import re
     if language == "hi":
-        # Rs 5 lakh -> 5 लाख रुपये (handle combined first)
-        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
-        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*crore', r'\1 करोड़ रुपये', text, flags=re.IGNORECASE)
-        # Rs 6,000 -> 6,000 रुपये
-        text = re.sub(r'Rs\s*([\d,]+\.?\d*)', r'\1 रुपये', text)
-        # 2.67 lakh -> 2.67 लाख रुपये
-        text = re.sub(r'(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
-        # 1 crore -> 1 करोड़ रुपये
-        text = re.sub(r'(\d+(?:\.\d+)?)\s*crore', r'\1 करोड़ रुपये', text, flags=re.IGNORECASE)
-        # lakh standalone -> लाख
-        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*lakh\b', r'\1 लाख', text, flags=re.IGNORECASE)
-        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*crore\b', r'\1 करोड़', text, flags=re.IGNORECASE)
+        # Order matters: handle combined patterns first, then simple ones
+        # Rs 5 lakh / Rs 5 crore -> 5 लाख रुपये / 5 करोड़ रुपये
+        text = re.sub(r'Rs\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*lakh\b', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'Rs\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*crore\b', r'\1 करोड़ रुपये', text, flags=re.IGNORECASE)
+        # Rs 6,000 / Rs 5 -> 6,000 रुपये / 5 रुपये
+        text = re.sub(r'Rs\s*(\d+(?:,\d+)*(?:\.\d+)?)', r'\1 रुपये', text, flags=re.IGNORECASE)
+        # 5 lakh rupees / 5 lakh -> 5 लाख रुपये (without Rs prefix)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*lakh\b\s*rupees?\b', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*lakh\b', r'\1 लाख', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*crore\b\s*rupees?\b', r'\1 करोड़ रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*crore\b', r'\1 करोड़', text, flags=re.IGNORECASE)
     elif language == "mr":
-        # Rs 5 lakh -> 5 लाख रुपये
-        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
-        text = re.sub(r'Rs\s*(\d+(?:\.\d+)?)\s*crore', r'\1 करोड रुपये', text, flags=re.IGNORECASE)
-        text = re.sub(r'Rs\s*([\d,]+\.?\d*)', r'\1 रुपये', text)
-        text = re.sub(r'(\d+(?:\.\d+)?)\s*lakh', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
-        text = re.sub(r'(\d+(?:\.\d+)?)\s*crore', r'\1 करोड रुपये', text, flags=re.IGNORECASE)
-        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*lakh\b', r'\1 लाख', text, flags=re.IGNORECASE)
-        text = re.sub(r'\b(\d+(?:\.\d+)?)\s*crore\b', r'\1 करोड', text, flags=re.IGNORECASE)
+        # Rs 5 lakh / Rs 5 crore -> 5 लाख रुपये / 5 करोड रुपये
+        text = re.sub(r'Rs\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*lakh\b', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'Rs\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*crore\b', r'\1 करोड रुपये', text, flags=re.IGNORECASE)
+        # Rs 6,000 / Rs 5 -> 6,000 रुपये / 5 रुपये
+        text = re.sub(r'Rs\s*(\d+(?:,\d+)*(?:\.\d+)?)', r'\1 रुपये', text, flags=re.IGNORECASE)
+        # 5 lakh rupees / 5 lakh -> 5 लाख रुपये (without Rs prefix)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*lakh\b\s*rupees?\b', r'\1 लाख रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*lakh\b', r'\1 लाख', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*crore\b\s*rupees?\b', r'\1 करोड रुपये', text, flags=re.IGNORECASE)
+        text = re.sub(r'(\d+(?:,\d+)*(?:\.\d+)?)\s*crore\b', r'\1 करोड', text, flags=re.IGNORECASE)
     return text
 
 LANGUAGE_NAMES = {
@@ -302,7 +303,7 @@ def _get_priority_for_elderly_widow(scheme_id: str) -> int:
     return priority_map.get(scheme_id, 999)
 
 
-def select_results(results: List[SchemeResult], profile: Dict[str, Any]) -> List[SchemeResult]:
+def select_results(results: List[SchemeResult], profile: Dict[str, Any], query_text: str = "") -> List[SchemeResult]:
     """
     Select at most 5 results for display. ONE SHARED FUNCTION used by main.py and tests.
     Ranking:
@@ -310,6 +311,7 @@ def select_results(results: List[SchemeResult], profile: Dict[str, Any]) -> List
     - Drop schemes with required occupation (farmer, street_vendor, student, business_owner)
       when profile.occupation is null AND profile has gender, age or annual_income
     - Order: all "yes"; then "maybe" with:
+      - Category boost: schemes matching query keywords (insurance, seeds, loan, scholarship, house, gas, health)
       - pm_ujjwala first if gender is female and has_lpg is false
       - then "Needs verification" reasons
       - others last
@@ -335,17 +337,64 @@ def select_results(results: List[SchemeResult], profile: Dict[str, Any]) -> List
     has_age = profile.get("age") is not None
     has_income = profile.get("annual_income") is not None
     has_other_facts = has_gender or has_age or has_income
-    
+
     filtered_results = []
     for r in filtered:
         if r.eligible == "maybe":
             reason_lower = r.reason.lower()
             # Check if reason is about occupation
-            is_occupation_maybe = ("occupation" in reason_lower and 
+            is_occupation_maybe = ("occupation" in reason_lower and
                                    ("unknown" in reason_lower or "missing" in reason_lower or "not in allowed" in reason_lower))
             if is_occupation_maybe and profile.get("occupation") is None and has_other_facts:
                 continue  # Drop this scheme
         filtered_results.append(r)
+
+    # Category-based boost: detect keywords in query_text
+    query_lower = query_text.lower()
+    category_keywords = {
+        "insurance": ["insurance", "bima", "बीमा", "विमा", "विमा योजना", "fasal bima", "crop insurance"],
+        "seeds": ["seed", "seeds", "beej", "बीज", "बियाणे", "certified seed", "hybrid seed"],
+        "loan": ["loan", "credit", "kcc", "kisan credit", "मुद्रा", "कर्ज", "ऋण", "क्रेडिट कार्ड"],
+        "scholarship": ["scholarship", "छात्रवृत्ति", "शिष्यवृत्ती", "post matric", "शिष्यवृत्ती"],
+        "house": ["house", "housing", "awas", "आवास", "घर", "घरकुल", "home"],
+        "gas": ["gas", "lpg", "ujjwala", "उज्ज्वला", "गॅस", "गैस", "एलपीजी"],
+        "health": ["health", "healthcare", "hospital", "medical", "आयुष्मान", "आरोग्य", "स्वास्थ्य", "अस्पताल", "चिकित्सा"],
+    }
+
+    # Detect which categories are mentioned in query
+    active_categories = set()
+    for category, keywords in category_keywords.items():
+        for kw in keywords:
+            if kw in query_lower:
+                active_categories.add(category)
+                break
+
+    # Get scheme categories from data/schemes.json
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    schemes_path = os.path.join(base_dir, "data", "schemes.json")
+    scheme_category_map = {}
+    try:
+        with open(schemes_path, "r", encoding="utf-8") as f:
+            schemes = json.load(f)
+            for s in schemes:
+                scheme_category_map[s["id"]] = s.get("category", "")
+    except Exception:
+        pass
+
+    # Apply category boost to filtered results
+    # We'll sort the filtered_results by category relevance
+    def category_boost(r: SchemeResult) -> int:
+        """Return boost score (higher = more relevant)"""
+        scheme_cat = scheme_category_map.get(r.scheme_id, "")
+        if active_categories and scheme_cat:
+            cat_lower = scheme_cat.lower()
+            for cat in active_categories:
+                if cat in cat_lower or cat_lower in cat:
+                    return 100  # High boost for matching category
+        return 0
+
+    # Sort filtered_results by category boost (descending)
+    filtered_results.sort(key=lambda r: category_boost(r), reverse=True)
 
     yes_results = [r for r in filtered_results if r.eligible == "yes"]
     maybe_results = [r for r in filtered_results if r.eligible == "maybe"]

@@ -12,6 +12,8 @@ from backend.extract import extract_profile
 from backend.match import match_schemes
 from backend.explain import explain_results, select_results, answer_chat, explain_pdf
 from backend.pdf_reader import extract_text
+from backend.stt import transcribe
+from backend.tts import synthesize
 
 # Enable LLM cache by default
 os.environ.setdefault("LLM_CACHE", "true")
@@ -111,7 +113,7 @@ async def analyze(request: AnalyzeRequest):
         results = match_schemes(profile_dict, request.text)
 
         # 3. Select top results
-        selected = select_results(results, profile_dict)
+        selected = select_results(results, profile_dict, request.text)
 
         # 4. Explain results (1 LLM call)
         explained_results, summary_text = explain_results(selected, profile_dict, request.language)
@@ -248,6 +250,78 @@ async def explain_pdf_endpoint(file: UploadFile = File(...), language: str = For
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/api/stt")
+async def stt_endpoint(audio: UploadFile = File(...), language: str = Form(default="en")):
+    """
+    Speech-to-text endpoint.
+    Accepts multipart form with 'audio' file and optional 'language' field.
+    Returns {"text": transcribed_text, "language": language_code}.
+    """
+    try:
+        # Read audio file
+        audio_bytes = await audio.read()
+
+        # Friendly error for empty audio
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="Empty audio file provided")
+
+        # Transcribe
+        text = transcribe(audio_bytes, language)
+
+        return {"text": text, "language": language}
+
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception("Error in /api/stt")
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            raise HTTPException(status_code=429, detail="The AI is busy, please try again in a minute")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+from fastapi import Response
+
+@app.post("/api/tts")
+async def tts_endpoint(request: dict):
+    """
+    Text-to-speech endpoint.
+    Accepts JSON with 'text' and 'language' fields.
+    Returns audio/mpeg bytes or error JSON.
+    """
+    text = request.get("text", "")
+    language = request.get("language", "en")
+
+    # Validate input
+    if not text or not text.strip():
+        logger.warning("TTS request with empty text")
+        raise HTTPException(status_code=400, detail="Empty text provided")
+
+    # Log the request (truncated for privacy)
+    logger.info(f"TTS request: language={language}, text_length={len(text)}, text_preview={text[:100]!r}")
+
+    try:
+        # Synthesize
+        audio_bytes = synthesize(text, language)
+
+        return Response(
+            content=audio_bytes,
+            media_type="audio/mpeg",
+            headers={"Content-Disposition": "inline; filename=speech.mp3"}
+        )
+
+    except ValueError as e:
+        logger.warning(f"TTS validation error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except RuntimeError as e:
+        logger.warning(f"TTS runtime error: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.exception(f"TTS unexpected error for text={text[:100]!r}, language={language}")
+        raise HTTPException(status_code=503, detail="Audio is unavailable right now")
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.000.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

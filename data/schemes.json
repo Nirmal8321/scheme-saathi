@@ -313,5 +313,98 @@
       "categories": ["SC", "ST", "OBC", "EBC", "minority"]
     },
     "requires_verification": ["income_certificate"]
+  },
+  {
+    "id": "pmfby",
+    "name": "Pradhan Mantri Fasal Bima Yojana (PMFBY)",
+    "level": "central",
+    "state": null,
+    "category": "agriculture",
+    "benefit": "Crop insurance: Sum insured per hectare; premium 1.5-5% (farmer share), rest subsidized",
+    "eligibility": [
+      "All farmers (including sharecroppers/tenant farmers) growing notified crops in notified areas",
+      "Compulsory for loanee farmers availing crop loans/KCC for notified crops",
+      "Voluntary for non-loanee farmers",
+      "Crop must be notified by state/UT for the season/year",
+      "Aadhaar seeded bank account mandatory"
+    ],
+    "documents": ["Aadhaar", "Land records / 7-12 extract / tenancy agreement", "Bank passbook", "Sowing certificate / crop declaration", "Aadhaar-seeded bank account details"],
+    "how_to_apply": "Apply through bank branch, CSC, or online at pmfby.gov.in before cut-off date",
+    "official_link": "https://pmfby.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "Pradhan Mantri Fasal Bima Yojana (PMFBY) is a crop insurance scheme launched in 2016 to provide financial support to farmers suffering crop loss/damage due to unforeseen events. It covers all farmers growing notified crops in notified areas. The scheme is compulsory for loanee farmers availing crop loans/KCC for notified crops, and voluntary for non-loanee farmers. Premium rates: Kharif crops 2% of sum insured (farmer share), Rabi crops 1.5%, Annual commercial/horticultural crops 5% - the balance premium is subsidized equally by central and state governments. Sum insured is based on scale of finance per hectare. Coverage includes yield loss (prevented sowing, post-harvest losses, localized calamities, mid-season adversity). Claims are assessed through crop cutting experiments (CCE) and technology (remote sensing, drones). Applications must be submitted before the season cut-off date through banks, CSCs, or the PMFBY portal.",
+    "rules": {
+      "min_age": null,
+      "max_age": null,
+      "max_income": null,
+      "states": [],
+      "gender": null,
+      "occupations": ["farmer", "agriculturist", "sharecropper", "tenant_farmer"],
+      "needs_land": true,
+      "categories": []
+    },
+    "requires_verification": ["crop_notified_area", "land_ownership_or_tenancy"]
+  },
+  {
+    "id": "kcc",
+    "name": "Kisan Credit Card (KCC)",
+    "level": "central",
+    "state": null,
+    "category": "credit_finance",
+    "benefit": "Revolving credit up to Rs 3 lakh (with PM-KISAN linkage); interest subvention 2%, prompt repayment incentive 3%",
+    "eligibility": [
+      "All farmers - individual/joint cultivators, owner cultivators, tenant farmers, sharecroppers, oral lessees",
+      "Age 18-75 years (senior citizens need co-borrower)",
+      "SHGs/JLGs of farmers also eligible",
+      "Activities: crop production, post-harvest expenses, produce marketing, allied activities (dairy, poultry, fisheries)",
+      "Not a defaulter to any bank"
+    ],
+    "documents": ["Aadhaar", "PAN", "Land records / 7-12 extract / tenancy agreement", "Crop pattern details", "Bank passbook", "Passport size photos"],
+    "how_to_apply": "Apply at any bank branch (commercial, RRB, cooperative) or online via pmkisan.gov.in KCC portal",
+    "official_link": "https://agricoop.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "Kisan Credit Card (KCC) scheme, launched in 1998 and revamped in 2019, provides short-term credit to farmers for cultivation and allied activities. It offers a revolving credit limit with interest subvention: 2% per annum on loans up to Rs 3 lakh, plus an additional 3% prompt repayment incentive (effective 4% interest). The credit limit is based on scale of finance for crops grown + 10% for post-harvest/household/consumption + 20% for allied activities (dairy, poultry, fisheries). With PM-KISAN linkage, eligible PM-KISAN beneficiaries can get KCC saturation. Eligible borrowers include individual/joint cultivators, tenant farmers, sharecroppers, oral lessees, and SHGs/JLGs of farmers aged 18-75 years. The card is valid for 5 years with annual review. No collateral for loans up to Rs 1.6 lakh. Applications can be submitted at any bank branch (commercial, RRB, cooperative) or online through the PM-KISAN portal.",
+    "rules": {
+      "min_age": 18,
+      "max_age": 75,
+      "max_income": null,
+      "states": [],
+      "gender": null,
+      "occupations": ["farmer", "agriculturist", "tenant_farmer", "sharecropper", "dairy_farmer", "poultry_farmer", "fisheries"],
+      "needs_land": false,
+      "categories": []
+    },
+    "requires_verification": ["land_cultivation_or_tenancy"]
+  },
+  {
+    "id": "seed_subsidy",
+    "name": "Maharashtra Beej Unnati Yojana (Seed Subsidy)",
+    "level": "state",
+    "state": "Maharashtra",
+    "category": "agriculture",
+    "benefit": "Subsidy on certified seeds: 50% for general farmers, 75% for SC/ST/small-marginal farmers (max Rs 2,000-5,000 per hectare depending on crop)",
+    "eligibility": [
+      "Resident farmer of Maharashtra",
+      "Must have cultivable land in Maharashtra",
+      "Purchase certified/hybrid seeds from authorized dealers/MAHABEEJ/MSSC",
+      "Small and marginal farmers (up to 2 ha) get higher subsidy",
+      "SC/ST farmers eligible for enhanced subsidy"
+    ],
+    "documents": ["Aadhaar", "7/12 extract (land record)", "Caste certificate (if applicable)", "Seed purchase bill/receipt from authorized dealer", "Bank passbook", "Sowing declaration"],
+    "how_to_apply": "Apply online at mahadbt.maharashtra.gov.in (MahaDBT portal) or through Taluka Agriculture Officer",
+    "official_link": "https://mahadbt.maharashtra.gov.in",
+    "last_verified": "UNVERIFIED",
+    "raw_text": "The Maharashtra Beej Unnati Yojana (Seed Upgradation Scheme) provides subsidy on purchase of certified/hybrid seeds to farmers in Maharashtra. The scheme aims to increase seed replacement rate and promote use of quality seeds. Subsidy rates: 50% of seed cost for general farmers, 75% for SC/ST and small/marginal farmers (up to 2 hectares). Maximum subsidy per hectare varies by crop: Kharif cereals Rs 2,000/ha, Rabi cereals Rs 1,500/ha, Pulses Rs 3,000/ha, Oilseeds Rs 5,000/ha, Cotton Rs 3,000/ha. Seeds must be purchased from authorized dealers, MAHABEEJ (Maharashtra State Seed Corporation), or MSSC (Maharashtra State Seeds Corporation). Eligible farmers must be residents of Maharashtra with cultivable land. Small and marginal farmers (landholding up to 2 ha) and SC/ST farmers get enhanced subsidy. Applications are submitted through the MahaDBT portal or through the Taluka Agriculture Officer. The subsidy is transferred directly to the farmer's bank account after verification.",
+    "rules": {
+      "min_age": null,
+      "max_age": null,
+      "max_income": null,
+      "states": ["Maharashtra"],
+      "gender": null,
+      "occupations": ["farmer", "agriculturist"],
+      "needs_land": true,
+      "categories": ["SC", "ST", "small_farmer", "marginal_farmer"]
+    },
+    "requires_verification": ["land_ownership_maharashtra", "seed_purchase_from_authorized_dealer"]
   }
 ]
