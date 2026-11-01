@@ -1,18 +1,15 @@
 """Scheme Saathi - Streamlit UI."""
-import os
 import streamlit as st
 from ui.api_client import analyze, stt, tts
 from ui.components import scheme_card, profile_box
 
-# Check for demo offline mode
-DEMO_OFFLINE = os.getenv("DEMO_OFFLINE", "false").lower() == "true"
 
 # Page config - mobile friendly
 st.set_page_config(
     page_title="Scheme Saathi",
     page_icon="🇮🇳",
     layout="centered",
-    initial_sidebar_state="expanded" if DEMO_OFFLINE else "collapsed"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom CSS for large fonts and mobile-friendly spacing
@@ -46,7 +43,7 @@ LANGUAGES = {
     "ಕನ್ನಡ (Kannada)": "kn",
 }
 
-# Sample texts
+# Sample texts (fill text box only)
 SAMPLES = {
     "Farmer in Wardha": (
         "I am a 42-year-old male farmer from Wardha, Maharashtra. "
@@ -64,47 +61,6 @@ SAMPLES = {
         "I need pension and healthcare support."
     ),
 }
-
-# Demo configurations for offline mode
-DEMO_CONFIGS = {
-    "marathi_farmer": {
-        "label": "🌾 Marathi Farmer (Wardha)",
-        "text": (
-            "मी ४२ वर्षाचा शेतकरी आहे, वर्धा, महाराष्ट्रातून. "
-            "माझी वार्षिक उत्पन्न १.२ लाख रुपये आहे आणि माझ्याकडे ३ एकर जमीन आहे. "
-            "मी कापूस आणि सोयाबीन पीक घेतो. मला पीक विमा आणि बीज योजनेची माहिती हवी आहे."
-        ),
-        "language": "mr",
-    },
-    "hindi_widow": {
-        "label": "👵 Hindi Elderly Widow",
-        "text": (
-            "मैं ६८ वर्ष की विधवा महिला हूँ, चेन्नई, तमिलनाडु से। "
-            "मेरी कोई नियमित आय नहीं है और मैं अपनी बेटी के साथ रहती हूँ। "
-            "मुझे पेंशन और स्वास्थ्य सहायता की आवश्यकता है।"
-        ),
-        "language": "hi",
-    },
-    "english_student": {
-        "label": "🎓 English Student",
-        "text": (
-            "I am a 22-year-old student from Delhi. "
-            "My family income is 3 lakh per year. "
-            "I am pursuing a postgraduate degree and need scholarship information for SC category students."
-        ),
-        "language": "en",
-    },
-}
-
-
-def load_demo(demo_key: str):
-    """Load a demo configuration into session state."""
-    if demo_key in DEMO_CONFIGS:
-        demo = DEMO_CONFIGS[demo_key]
-        st.session_state.text_input = demo["text"]
-        st.session_state.language = demo["language"]
-        st.success(f"Loaded demo: {DEMO_CONFIGS[demo_key]['label']}")
-        st.rerun()
 
 
 def run_analysis():
@@ -152,22 +108,6 @@ def handle_audio_input():
         st.session_state.audio_processed = False
 
 
-def run_analysis():
-    """Call analyze API and store result."""
-    text = st.session_state.text_input.strip()
-    if not text:
-        st.warning("Please enter some text or record audio first.")
-        return
-
-    with st.spinner("Finding your schemes..."):
-        resp = analyze(text, st.session_state.language)
-        if "error" in resp:
-            st.error(resp["error"])
-        else:
-            st.session_state.analyze_result = resp
-            st.success("Done!")
-
-
 def play_full_summary():
     """Play the full summary as audio."""
     result = st.session_state.get("analyze_result")
@@ -185,22 +125,6 @@ def play_full_summary():
 def main():
     init_session_state()
     handle_audio_input()
-
-    # Sidebar with demo buttons (only in offline mode)
-    if DEMO_OFFLINE:
-        with st.sidebar:
-            st.header("🎬 Demo Mode")
-            st.caption("Click a button to load a pre-filled scenario")
-
-            if st.button("🌾 Marathi Farmer (Wardha)", use_container_width=True):
-                load_demo("marathi_farmer")
-            if st.button("👵 Hindi Elderly Widow", use_container_width=True):
-                load_demo("hindi_widow")
-            if st.button("🎓 English Student", use_container_width=True):
-                load_demo("english_student")
-
-            st.divider()
-            st.caption("Demo data loads cached results & audio instantly")
 
     # Title and tagline
     st.title("🇮🇳 Scheme Saathi")
@@ -230,7 +154,7 @@ def main():
         label_visibility="collapsed"
     )
 
-    # Sample buttons
+    # Sample buttons (fill text box only)
     st.markdown("**Quick samples:**")
     cols = st.columns(3)
     for i, (label, text) in enumerate(SAMPLES.items()):
