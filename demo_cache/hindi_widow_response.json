@@ -1,0 +1,53 @@
+{
+  "profile": {
+    "age": 68,
+    "annual_income": 50000,
+    "caste_category": "General",
+    "gender": "female",
+    "land_acres": 0,
+    "occupation": null,
+    "state": "Tamil Nadu"
+  },
+  "missing_fields": ["occupation"],
+  "results": [
+    {
+      "benefit": "Free LPG connection with first refill and stove (subsidy on subsequent refills)",
+      "documents": ["Aadhaar", "Ration card / BPL certificate", "Bank passbook", "Age proof", "Residence proof"],
+      "eligible": "maybe",
+      "explanation": "PM Ujjwala Yojana provides free LPG connections to adult women from BPL households. As a 68-year-old widow with no regular income, you likely qualify under the BPL/SECC 2011 criteria. The scheme requires verification of BPL status and that no LPG connection exists in your household. Since you have no LPG connection, this is a strong match.",
+      "how_to_apply": "Apply at nearest LPG distributor or online at pmuy.gov.in",
+      "official_link": "https://pmuy.gov.in",
+      "reason": "Needs verification: bpl_status, existing_lpg_connection",
+      "scheme": "PM Ujjwala Yojana (PMUY)",
+      "scheme_id": "pm_ujjwala",
+      "source_quote": "The Pradhan Mantri Ujjwala Yojana (PMUY) was launched in 2016 to provide free LPG connections to women from Below Poverty Line (BPL) households."
+    },
+    {
+      "benefit": "Rs 5 lakh per family per year for secondary/tertiary hospitalization",
+      "documents": ["Aadhaar", "Ration card / family ID", "Any government-issued ID"],
+      "eligible": "maybe",
+      "explanation": "PM-JAY provides health insurance of Rs 5 lakh per family per year. Eligibility is based on SECC 2011 deprivation criteria. As an elderly widow with very low income, you may qualify under the destitute/urban poor categories. Verification of SECC listing or income proof is needed.",
+      "how_to_apply": "Check eligibility at beneficiary.nha.gov.in or via PMJAY kiosk at empaneled hospitals",
+      "official_link": "https://pmjay.gov.in",
+      "reason": "Needs verification: secc_listing_or_income_proof",
+      "scheme": "Ayushman Bharat PM-JAY",
+      "scheme_id": "pmjay",
+      "source_quote": "Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (PM-JAY) is the world's largest government-funded health assurance scheme, launched in 2018."
+    },
+    {
+      "benefit": "Subsidy on home loan interest (CLSS): EWS/LIG up to Rs 2.67 lakh, MIG up to Rs 2.3 lakh",
+      "documents": ["Aadhaar", "PAN", "Income proof", "Property documents", "Bank statements", "NOC from builder/society"],
+      "eligible": "maybe",
+      "explanation": "PMAY provides interest subsidy on home loans. As a widow with income below Rs 3 lakh (EWS category), you may qualify for EWS/LIG subsidy up to Rs 2.67 lakh. The scheme requires verification that you don't own a pucca house anywhere in India. Adult female ownership/co-ownership is mandatory for EWS/LIG.",
+      "how_to_apply": "Urban: pmaymis.gov.in or via ULB/CSC; Gramin: pmayg.dord.gov.in or via Gram Panchayat",
+      "official_link": "https://pmaymis.gov.in",
+      "reason": "Needs verification: house_ownership",
+      "scheme": "PM Awas Yojana (PMAY)",
+      "scheme_id": "pm_awas",
+      "source_quote": "The Pradhan Mantri Awas Yojana (PMAY) aims to provide 'Housing for All' through two components: PMAY-Urban (PMAY-U) and PMAY-Gramin (PMAY-G)."
+    }
+  ],
+  "summary_text": "आप 68 वर्ष की विधवा महिला हैं जिनकी कोई नियमित आय नहीं है। PM उज्ज्वला योजना के तहत मुफ्त LPG कनेक्शन, आयुष्मान भारत PM-JAY के तहत 5 लाख का स्वास्थ्य बीमा, और PM आवास योजना के तहत आवास सब्सिडी मिल सकती है। ये सभी योजनाएं BPL/SECC सूची में नाम होने पर लागू होती हैं। नजदीकी CSC या ऑनलाइन पोर्टल पर आवेदन करें।",
+  "language": "hi",
+  "disclaimer": "Verify at official portal before applying."
+}

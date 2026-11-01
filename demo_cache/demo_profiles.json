@@ -1,0 +1,20 @@
+[
+  {
+    "id": "marathi_farmer",
+    "name": "Marathi Farmer (Wardha)",
+    "text": "मी ४२ वर्षाचा शेतकरी आहे, वर्धा, महाराष्ट्रातून. माझी वार्षिक उत्पन्न १.२ लाख रुपये आहे आणि माझ्याकडे ३ एकर जमीन आहे. मी कापूस आणि सोयाबीन पीक घेतो. मला पीक विमा आणि बीज योजनेची माहिती हवी आहे.",
+    "language": "mr"
+  },
+  {
+    "id": "hindi_widow",
+    "name": "Hindi Elderly Widow",
+    "text": "मैं ६८ वर्ष की विधवा महिला हूँ, चेन्नई, तमिलनाडु से। मेरी कोई नियमित आय नहीं है और मैं अपनी बेटी के साथ रहती हूँ। मुझे पेंशन और स्वास्थ्य सहायता की आवश्यकता है।",
+    "language": "hi"
+  },
+  {
+    "id": "english_student",
+    "name": "English Student",
+    "text": "I am a 22-year-old student from Delhi. My family income is 3 lakh per year. I am pursuing a postgraduate degree and need scholarship information for SC category students.",
+    "language": "en"
+  }
+]

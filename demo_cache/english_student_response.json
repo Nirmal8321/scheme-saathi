@@ -1,0 +1,43 @@
+{
+  "profile": {
+    "age": 22,
+    "annual_income": 300000,
+    "caste_category": "SC",
+    "gender": "male",
+    "land_acres": 0,
+    "occupation": "student",
+    "state": "Delhi"
+  },
+  "missing_fields": [],
+  "results": [
+    {
+      "benefit": "Maintenance allowance, tuition fee reimbursement, book allowance, disability allowance (varies by state/category)",
+      "documents": ["Aadhaar", "Caste/category certificate", "Income certificate", "Domicile certificate", "Previous year marksheet", "Admission receipt/fee structure", "Bank passbook", "Bonafide certificate from institution"],
+      "eligible": "yes",
+      "explanation": "Post-Matric Scholarship provides financial assistance to SC students pursuing postgraduate studies. With your SC category certificate, family income of Rs 3 lakh (below the Rs 2.5 lakh ceiling for SC), and enrollment in a postgraduate program, you are eligible. The scholarship covers maintenance allowance, tuition fee reimbursement, book allowance, and additional allowances. Minimum 75% attendance required.",
+      "how_to_apply": "Apply online at scholarships.gov.in (National Scholarship Portal) or state portal",
+      "official_link": "https://scholarships.gov.in",
+      "reason": "Rule check passed",
+      "scheme": "Post-Matric Scholarship",
+      "scheme_id": "post_matric_scholarship",
+      "source_quote": "The Post-Matric Scholarship Scheme provides financial assistance to students belonging to Scheduled Castes (SC), Scheduled Tribes (ST), Other Backward Classes (OBC), Economically Backward Classes (EBC), and Minority communities for pursuing studies at post-matriculation level."
+    },
+    {
+      "benefit": "Up to Rs 10 lakh loan (Shishu: up to 50K, Kishor: 50K-5L, Tarun: 5L-10L)",
+      "documents": ["Aadhaar", "PAN", "Business address proof", "Business identity proof", "Bank statements (6 months)", "Income tax returns (if applicable)", "Quotations for machinery/equipment (if applicable)"],
+      "eligible": "no",
+      "reason": "Occupation 'student' not in allowed list",
+      "scheme": "Mudra Loan (PM Mudra Yojana)",
+      "scheme_id": "mudra_loan",
+      "benefit": "Up to Rs 10 lakh loan (Shishu: up to 50K, Kishor: 50K-5L, Tarun: 5L-10L)",
+      "documents": ["Aadhaar", "PAN", "Business address proof", "Business identity proof", "Bank statements (6 months)", "Income tax returns (if applicable)", "Quotations for machinery/equipment (if applicable)"],
+      "how_to_apply": "Apply at any bank branch, NBFC, or MFIs; online at mudra.org.in",
+      "official_link": "https://mudra.org.in",
+      "source_quote": "",
+      "explanation": ""
+    }
+  ],
+  "summary_text": "As an SC category postgraduate student from Delhi with family income of Rs 3 lakh, you are eligible for the Post-Matric Scholarship which covers maintenance allowance, tuition fees, and book allowance. Apply online at the National Scholarship Portal (scholarships.gov.in). Ensure 75% attendance and submit caste, income, and domicile certificates.",
+  "language": "en",
+  "disclaimer": "Verify at official portal before applying."
+}

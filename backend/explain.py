@@ -540,6 +540,10 @@ Rules:
 - For "maybe": explain what is unknown in simple words (e.g., "tell us your age").
 - "explanation": 2-3 short sentences. Benefit first, then what to do.
 - DO NOT ask the user any question. Do NOT mention caste.
+- DO NOT state whether the user is or is not eligible.
+- DO NOT mention income limits, ages, education level, attendance, or any specific numbers that are not explicitly present in the scheme's benefit text, how_to_apply, or documents fields provided.
+- DO NOT add facts not present in the provided scheme data.
+- Write only what the scheme gives (use the benefit text exactly) and how to apply.
 - Return ONLY valid JSON with this structure:
 {{
   "results": [
@@ -555,19 +559,90 @@ Schemes:
 
 Target language: {language} ({LANGUAGE_NAMES.get(language, 'English')})"""
 
-    for attempt in range(2):
-        try:
-            llm_result = call_json(system_prompt, user_prompt, max_tokens=2000, temperature=0.3)
-            parsed = _parse_json_with_retry(json.dumps(llm_result) if isinstance(llm_result, dict) else str(llm_result))
 
-            explanation_map = {item["scheme_id"]: item["explanation"] for item in parsed.get("results", [])}
-            summary_text = parsed.get("summary_text", "")
+def _filter_unauthorized_numbers(
+    explanation: str,
+    scheme_benefit: str,
+    scheme_how_to_apply: str,
+    scheme_documents: List[str],
+    profile: Dict[str, Any]
+) -> str:
+    """
+    Drop sentences containing digit groups not present in scheme data or user profile.
+    """
+    import re
+
+    # Collect all allowed numbers from scheme data and profile
+    allowed_numbers = set()
+
+    # From scheme benefit
+    for match in re.finditer(r'\d[\d,\.]*', scheme_benefit):
+        allowed_numbers.add(match.group().replace(',', ''))
+
+    # From how_to_apply
+    for match in re.finditer(r'\d[\d,\.]*', scheme_how_to_apply):
+        allowed_numbers.add(match.group().replace(',', ''))
+
+    # From documents
+    for doc in scheme_documents:
+        for match in re.finditer(r'\d[\d,\.]*', doc):
+            allowed_numbers.add(match.group().replace(',', ''))
+
+    # From profile
+    for key, value in profile.items():
+        if isinstance(value, (int, float)):
+            allowed_numbers.add(str(int(value)))
+        elif isinstance(value, str):
+            for match in re.finditer(r'\d[\d,\.]*', value):
+                allowed_numbers.add(match.group().replace(',', ''))
+
+    # Split into sentences and filter
+    sentences = re.split(r'(?<=[.!?])\s+', explanation)
+    filtered_sentences = []
+
+    for sentence in sentences:
+        # Find all digit groups in the sentence
+        sentence_numbers = set()
+        for match in re.finditer(r'\d[\d,\.]*', sentence):
+            sentence_numbers.add(match.group().replace(',', ''))
+
+        # Check if all numbers in sentence are allowed
+        unauthorized = sentence_numbers - allowed_numbers
+        if not unauthorized:
+            filtered_sentences.append(sentence)
+        # else: drop the sentence
+
+    return ' '.join(filtered_sentences).strip()
+
+
+def explain_results(
+    results: List[SchemeResult],
+    profile: Dict[str, Any],
+    language: str
+) -> Tuple[List[SchemeResult], str]:
+
+            # Apply explanations and copy fields from schemes.json
+            # Load scheme data for filtering
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            schemes_path = os.path.join(base_dir, "data", "schemes.json")
+            with open(schemes_path, "r", encoding="utf-8") as f:
+                all_schemes = json.load(f)
+            scheme_map = {s["id"]: s for s in all_schemes}
 
             # Apply explanations and copy fields from schemes.json
             for r in results:
                 if r.scheme_id in explanation_map:
                     # Clean explanation (remove portal names)
                     explanation = _clean_explanation(explanation_map[r.scheme_id], r.scheme_id)
+                    # Filter unauthorized numbers
+                    scheme_data = scheme_map.get(r.scheme_id, {})
+                    explanation = _filter_unauthorized_numbers(
+                        explanation,
+                        scheme_data.get("benefit", ""),
+                        scheme_data.get("how_to_apply", ""),
+                        scheme_data.get("documents", []),
+                        profile
+                    )
                     r.explanation = explanation
 
                 # Always copy official_link, benefit, documents, how_to_apply from schemes.json
@@ -597,6 +672,18 @@ Target language: {language} ({LANGUAGE_NAMES.get(language, 'English')})"""
                     if r.reason:
                         r.reason = _post_process_currency(r.reason, language)
                 summary_text = _post_process_currency(summary_text, language) if summary_text else summary_text
+
+            # Filter unauthorized numbers from summary_text
+            if summary_text:
+                # Use first scheme's data for filtering summary
+                first_scheme = scheme_map.get(results[0].scheme_id, {}) if results else {}
+                summary_text = _filter_unauthorized_numbers(
+                    summary_text,
+                    first_scheme.get("benefit", ""),
+                    first_scheme.get("how_to_apply", ""),
+                    first_scheme.get("documents", []),
+                    profile
+                )
 
             # Append next_question to each explanation in Python
             # Build next_question from selected results
