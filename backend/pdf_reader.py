@@ -66,6 +66,26 @@ def extract_pages(pdf_bytes: bytes, max_pages: int = 15) -> List[str]:
         return [f"Error extracting PDF: {str(e)}"]
 
 
+def create_sample_pdf() -> bytes:
+    """Create a simple sample PDF for testing if none exists."""
+    try:
+        import fitz
+        doc = fitz.open()
+        page = doc.new_page()
+        page.insert_text((50, 50), "Sample Government Scheme Notification\n\n")
+        page.insert_text((50, 100), "Scheme: PM-KISAN\n")
+        page.insert_text((50, 120), "Benefit: Rs 6,000 per year in 3 installments\n")
+        page.insert_text((50, 140), "Eligibility: Landholding farmer families with cultivable land\n")
+        page.insert_text((50, 160), "Apply at: pmkisan.gov.in or nearest CSC center\n")
+        page.insert_text((50, 180), "Deadline: Ongoing scheme, no deadline\n")
+        page.insert_text((50, 200), "Contact: 155261 or pmkisan.gov.in\n")
+        pdf_bytes = doc.tobytes()
+        doc.close()
+        return pdf_bytes
+    except Exception:
+        return b""
+
+
 if __name__ == "__main__":
     # Quick test
     import sys

@@ -6,7 +6,7 @@ Rule: when a task is done, change `[ ]` to `[x]` and add ONE short line after it
 
 - [x] S1 Repo skeleton, requirements.txt, .env.example, README created
 
-## Person A: Backend + AI
+## Part A: Backend + AI
 
 - [x] A1 schemas.py and mock_data.py created (contract matches design.md)
 - [x] A2 schemes.json built with 10 real schemes
@@ -17,7 +17,7 @@ Rule: when a task is done, change `[ ]` to `[x]` and add ONE short line after it
 - [ ] A7 FastAPI routes /analyze /chat /explain-pdf /health work
 - [x] A8 Tests with 5 sample users pass
 
-## Person B: Voice + UI + Demo
+## Part B: Voice + UI + Demo
 
 - [ ] B1 Streamlit UI skeleton runs with mock data
 - [ ] B2 STT module (stt.py) and /api/stt route work

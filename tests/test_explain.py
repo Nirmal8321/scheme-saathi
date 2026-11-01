@@ -1,7 +1,8 @@
-"""Test script for LLM #3 explainer functionality."""
+"""Test script for LLM #3 explainer functionality - 3 LLM calls only."""
 import json
 import sys
 import os
+import time
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -28,7 +29,7 @@ def create_sample_pdf() -> bytes:
         page = doc.new_page()
         page.insert_text((50, 50), "Sample Government Scheme Notification\n\n")
         page.insert_text((50, 100), "Scheme: PM-KISAN\n")
-        page.insert_text((50, 120), "Benefit: Rs 6,000 per year in 3 installments\n")
+        page.insert_text((50, 120), "Benefit: 6,000 रुपये per year in 3 installments\n")
         page.insert_text((50, 140), "Eligibility: Landholding farmer families with cultivable land\n")
         page.insert_text((50, 160), "Apply at: pmkisan.gov.in or nearest CSC center\n")
         page.insert_text((50, 180), "Deadline: Ongoing scheme, no deadline\n")
@@ -40,18 +41,41 @@ def create_sample_pdf() -> bytes:
         return b""
 
 
+def print_section(title: str):
+    """Print a section header."""
+    print("\n" + "=" * 80)
+    print(title)
+    print("=" * 80)
+
+
 def test_select_results():
-    """Test the select_results function."""
-    print("=" * 80)
-    print("TESTING select_results")
-    print("=" * 80)
+    """Test the select_results function (no LLM call)."""
+    print_section("TESTING select_results (no LLM)")
 
     from backend.schemas import SchemeResult
 
+    # Create a mock profile
+    profile = {
+        "occupation": "farmer",
+        "age": 45,
+        "gender": "male",
+        "state": "Maharashtra",
+        "annual_income": 80000,
+        "land_acres": 2.0,
+        "caste_category": None,
+        "family_members": 2
+    }
+
     # Create mock results with different verdicts
     results = [
-        SchemeResult(scheme_id="pm_kisan", scheme="PM-KISAN", eligible="yes", reason="Eligible farmer", benefit="Rs 6000/year", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
-        SchemeResult(scheme_id="namo_shetkari", scheme="Namo Shetkari", eligible="yes", reason="Maharashtra farmer", benefit="Rs 6000/year", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="pm_kisan", scheme="PM-KISAN", eligible="yes", reason="Eligible farmer", benefit="6,000 रुपये per year", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="namo_shetkari", scheme="Namo Shetkari", eligible="yes", reason="Maharashtra farmer", benefit="6,000 रुपये per year", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="pm_awas", scheme="PM Awas", eligible="maybe", reason="Needs verification: house ownership", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="pm_ujjwala", scheme="PM Ujjwala", eligible="maybe", reason="Needs verification: bpl status", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="ladki_bahin", scheme="Ladki Bahin", eligible="maybe", reason="missing caste_category", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="mudra_loan", scheme="Mudra Loan", eligible="maybe", reason="occupation unknown", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="pm_svanidhi", scheme="PM SVANidhi", eligible="maybe", reason="occupation unknown", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
+        SchemeResult(scheme_id="stand_up_india", scheme="Stand Up India", eligible="no", reason="occupation not in allowed list", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
         SchemeResult(scheme_id="pm_awas", scheme="PM Awas", eligible="maybe", reason="Needs verification: house ownership", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
         SchemeResult(scheme_id="pm_ujjwala", scheme="PM Ujjwala", eligible="maybe", reason="Needs verification: bpl status", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
         SchemeResult(scheme_id="ladki_bahin", scheme="Ladki Bahin", eligible="maybe", reason="missing caste_category", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
@@ -60,82 +84,88 @@ def test_select_results():
         SchemeResult(scheme_id="stand_up_india", scheme="Stand Up India", eligible="no", reason="occupation not in allowed list", benefit="", documents=[], how_to_apply="", official_link="", source_quote="", explanation=""),
     ]
 
-    selected = select_results(results)
+    selected = select_results(results, profile)
     print(f"Total input: {len(results)}, Selected: {len(selected)}")
     for r in selected:
         print(f"  {r.scheme_id:20s} -> {r.eligible:6s} | {r.reason}")
     print()
 
 
-def test_explain_results():
-    """Test explain_results for sample users 1 and 2 in mr, hi, en."""
-    print("=" * 80)
-    print("TESTING explain_results")
-    print("=" * 80)
+def test_full_pipeline_sample5_hindi():
+    """Test 1: Sample 5 in Hindi through full pipeline (extract -> match -> select_results -> explain_results)."""
+    print_section("TEST 1: Sample 5 (Elderly Widow) in Hindi - Full Pipeline")
 
     samples = load_sample_inputs()
+    sample = samples[4]  # Sample 5: Elderly widow
+    print(f"Sample: {sample['description']}")
+    print(f"Input: {sample['text'][:100]}...")
 
-    for lang in ["mr", "hi", "en"]:
-        print(f"\n--- Language: {lang} ---")
-        for i, sample in enumerate(samples[:2]):  # Sample 1 and 2
-            print(f"\nSample {i+1}: {sample['description']}")
+    # Extract
+    profile, missing = extract_profile(sample['text'], debug=False)
+    profile_dict = profile.model_dump()
+    print(f"Extracted profile: occupation={profile_dict.get('occupation')}, age={profile_dict.get('age')}, gender={profile_dict.get('gender')}, income={profile_dict.get('annual_income')}")
 
-            # Extract profile
-            profile, _ = extract_profile(sample['text'])
-            profile_dict = profile.model_dump()
+    # Match
+    results = match_schemes(profile_dict, sample['text'])
+    print(f"Matched {len(results)} schemes")
 
-            # Match schemes
-            results = match_schemes(profile_dict, sample['text'])
+    # Select
+    selected = select_results(results, profile_dict)
+    print(f"Selected {len(selected)} schemes for explanation:")
+    for r in selected:
+        print(f"  {r.scheme_id} ({r.eligible}): {r.reason}")
 
-            # Select top results
-            selected = select_results(results)
+    # Explain (LLM CALL 1)
+    print("\n--- Calling explain_results (LLM CALL 1) ---")
+    try:
+        explained, summary = explain_results(selected, profile_dict, "hi")
+        print(f"Summary (Hindi): {summary}")
+        for r in explained:
+            print(f"  {r.scheme_id} ({r.eligible}): {r.explanation[:120]}...")
+            print(f"    benefit={r.benefit}, link={r.official_link[:60]}...")
+    except Exception as e:
+        print(f"  ERROR: {e}")
+        import traceback
+        traceback.print_exc()
 
-            # Explain
-            try:
-                explained, summary = explain_results(selected, profile_dict, lang)
-                print(f"  Summary ({lang}): {summary}")
-                for r in explained[:2]:
-                    print(f"    {r.scheme_id} ({r.eligible}): {r.explanation}")
-            except Exception as e:
-                print(f"  ERROR: {e}")
 
-
-def test_answer_chat():
-    """Test chat with 'Documents kon-kon lagtil?' for sample 1."""
-    print("\n" + "=" * 80)
-    print("TESTING answer_chat")
-    print("=" * 80)
+def test_chat_sample1_marathi():
+    """Test 2: Chat for sample 1 in Marathi: 'Documents kon-kon lagtil?'."""
+    print_section("TEST 2: Sample 1 (Farmer) Chat in Marathi")
 
     samples = load_sample_inputs()
+    sample = samples[0]  # Sample 1: Farmer
+    print(f"Sample: {sample['description']}")
 
-    for lang in ["mr", "hi", "en"]:
-        print(f"\n--- Language: {lang} ---")
-        sample = samples[0]  # Farmer sample
+    profile, _ = extract_profile(sample['text'])
+    profile_dict = profile.model_dump()
 
-        profile, _ = extract_profile(sample['text'])
-        profile_dict = profile.model_dump()
+    results = match_schemes(profile_dict, sample['text'])
+    selected = select_results(results, profile_dict)
 
-        results = match_schemes(profile_dict, sample['text'])
-        selected = select_results(results)
+    # Get scheme IDs for matched schemes
+    scheme_ids = [r.scheme_id for r in selected]
+    print(f"Matched schemes: {scheme_ids}")
 
-        question = "Documents kon-kon lagtil?" if lang == "mr" else \
-                   "कौन से दस्तावेज लगेंगे?" if lang == "hi" else \
-                   "What documents are needed?"
+    question = "Documents kon-kon lagtil?"
+    print(f"\nQuestion: {question}")
+    print("--- Calling answer_chat (LLM CALL 2) ---")
 
-        try:
-            answer, sources = answer_chat(question, profile_dict, lang, [])
-            print(f"  Question: {question}")
-            print(f"  Answer ({lang}): {answer}")
-            print(f"  Sources: {sources}")
-        except Exception as e:
-            print(f"  ERROR: {e}")
+    try:
+        answer, sources, translation_failed = answer_chat(question, profile_dict, "mr", [], matched_scheme_ids=scheme_ids)
+        print(f"Question: {question}")
+        print(f"Answer (Marathi): {answer}")
+        print(f"Sources: {sources}")
+        print(f"Translation failed: {translation_failed}")
+    except Exception as e:
+        print(f"  ERROR: {e}")
+        import traceback
+        traceback.print_exc()
 
 
-def test_explain_pdf():
-    """Test explain_pdf on a sample PDF."""
-    print("\n" + "=" * 80)
-    print("TESTING explain_pdf")
-    print("=" * 80)
+def test_explain_pdf_english():
+    """Test 3: explain_pdf in English."""
+    print_section("TEST 3: explain_pdf in English")
 
     # Check for existing PDF in data/pdfs
     pdf_dir = Path(__file__).parent.parent / "data" / "pdfs"
@@ -158,59 +188,37 @@ def test_explain_pdf():
     print(f"Extracted text length: {len(text)} chars")
     print(f"First 200 chars: {text[:200]}...")
 
-    for lang in ["mr", "hi", "en"]:
-        print(f"\n--- Language: {lang} ---")
-        try:
-            summary, key_points, who_is_affected, deadlines = explain_pdf(text, lang)
-            print(f"  Summary ({lang}): {summary}")
-            print(f"  Key points: {key_points}")
-            print(f"  Who is affected: {who_is_affected}")
-            print(f"  Deadlines: {deadlines}")
-        except Exception as e:
-            print(f"  ERROR: {e}")
-
-
-def test_full_pipeline():
-    """Test the full pipeline for all 5 samples in all languages."""
-    print("\n" + "=" * 80)
-    print("FULL PIPELINE TEST (all samples, all languages)")
-    print("=" * 80)
-
-    samples = load_sample_inputs()
-
-    for sample in samples:
-        print(f"\n--- {sample['description']} ---")
-
-        for lang in ["mr", "hi", "en"]:
-            print(f"\n  Language: {lang}")
-
-            # Extract
-            profile, missing = extract_profile(sample['text'], debug=False)
-            profile_dict = profile.model_dump()
-
-            # Match
-            results = match_schemes(profile_dict, sample['text'])
-
-            # Select
-            selected = select_results(results)
-
-            # Explain
-            try:
-                explained, summary = explain_results(selected, profile_dict, lang)
-                print(f"    Summary: {summary[:80]}...")
-                for r in explained[:2]:
-                    print(f"    {r.scheme_id} ({r.eligible}): {r.explanation[:80]}...")
-            except Exception as e:
-                print(f"    ERROR in explain: {e}")
+    print("\n--- Calling explain_pdf (LLM CALL 3) ---")
+    try:
+        summary, key_points, who_is_affected, deadlines = explain_pdf(text, "en")
+        print(f"Summary (English): {summary}")
+        print(f"Key points: {key_points}")
+        print(f"Who is affected: {who_is_affected}")
+        print(f"Deadlines: {deadlines}")
+    except Exception as e:
+        print(f"  ERROR: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
+    # Test 1: select_results (no LLM)
     test_select_results()
-    test_explain_results()
-    test_answer_chat()
-    test_explain_pdf()
-    test_full_pipeline()
+    time.sleep(1)
+
+    # Test 2: Sample 5 in Hindi - full pipeline (LLM CALL 1)
+    test_full_pipeline_sample5_hindi()
+    print("\nSleeping 5 seconds before next LLM call...")
+    time.sleep(5)
+
+    # Test 3: Chat for sample 1 in Marathi (LLM CALL 2)
+    test_chat_sample1_marathi()
+    print("\nSleeping 5 seconds before next LLM call...")
+    time.sleep(5)
+
+    # Test 4: explain_pdf in English (LLM CALL 3)
+    test_explain_pdf_english()
 
     print("\n" + "=" * 80)
-    print("ALL TESTS COMPLETED")
+    print("ALL 3 LLM CALLS COMPLETED")
     print("=" * 80)

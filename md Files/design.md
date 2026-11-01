@@ -95,14 +95,14 @@ scheme-saathi/
 
 ## 5. Work Split
 
-### Person A: Backend + AI brain
+### Part A: Backend + AI brain
 Owns: data, RAG, all LLM prompts, FastAPI routes, schemas, mock data.
 
-### Person B: Voice + UI + Demo
+### Part B: Voice + UI + Demo
 Owns: STT, TTS, Streamlit UI, PDF upload UI, language picker, demo script, pitch.
 
 ### Shared contract
-`backend/schemas.py` and Section 6 below are the contract. **Do not change the contract without telling the other person.** A ships `mock_data.py` and mock mode early (`USE_MOCK=true`) so B can build UI with no real backend.
+`backend/schemas.py` and Section 6 below are the contract. **Do not change the contract without telling Nirmal Prajapati.** A ships `mock_data.py` and mock mode early (`USE_MOCK=true`) so In Part 2 Person can build UI with no real backend.
 
 ---
 
