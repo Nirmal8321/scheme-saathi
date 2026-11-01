@@ -24,3 +24,8 @@ tts_cache/
 # OS
 .DS_Store
 Thumbs.db
+demo_cache/
+*.wav
+*.mp3
+server.log
+.env
