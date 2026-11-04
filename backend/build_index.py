@@ -1,26 +1,26 @@
-"""Build ChromaDB index from schemes.json for RAG search."""
+"""Build search index from schemes.json using Gemini embeddings."""
 import json
 import os
+import numpy as np
 from pathlib import Path
+from typing import List, Dict
 
-import chromadb
-from sentence_transformers import SentenceTransformer
-
+from backend.config import LLM_API_KEY
+from google import genai
 
 SCHEMES_FILE = Path(__file__).parent.parent / "data" / "schemes.json"
-CHROMA_DIR = Path(__file__).parent.parent / "chroma_db"
-COLLECTION_NAME = "schemes"
-EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+INDEX_FILE = Path(__file__).parent.parent / "data" / "index.npz"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
 CHUNK_SIZE = 200  # words per raw_text chunk
 
 
-def load_schemes() -> list:
+def load_schemes() -> List[Dict]:
     """Load schemes from JSON file."""
     with open(SCHEMES_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
-def create_summary_chunk(scheme: dict) -> str:
+def create_summary_chunk(scheme: Dict) -> str:
     """Create a summary chunk from structured scheme fields."""
     parts = [
         f"Scheme: {scheme['name']}",
@@ -36,7 +36,7 @@ def create_summary_chunk(scheme: dict) -> str:
     return "\n".join(parts)
 
 
-def chunk_text(text: str, max_words: int) -> list:
+def chunk_text(text: str, max_words: int) -> List[str]:
     """Split text into chunks of approximately max_words."""
     words = text.split()
     chunks = []
@@ -48,28 +48,13 @@ def chunk_text(text: str, max_words: int) -> list:
 
 
 def build_index():
-    """Build ChromaDB index from schemes data."""
+    """Build search index from schemes data using Gemini embeddings."""
     print(f"Loading schemes from {SCHEMES_FILE}...")
     schemes = load_schemes()
     print(f"Loaded {len(schemes)} schemes")
 
-    print(f"Loading embedding model: {EMBEDDING_MODEL}...")
-    model = SentenceTransformer(EMBEDDING_MODEL)
-
-    print(f"Initializing ChromaDB at {CHROMA_DIR}...")
-    client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-
-    # Delete existing collection if it exists
-    try:
-        client.delete_collection(COLLECTION_NAME)
-        print(f"Deleted existing collection: {COLLECTION_NAME}")
-    except Exception:
-        pass
-
-    collection = client.create_collection(
-        name=COLLECTION_NAME,
-        metadata={"hnsw:space": "cosine"}
-    )
+    print(f"Initializing Gemini client...")
+    client = genai.Client(api_key=LLM_API_KEY)
 
     all_documents = []
     all_metadatas = []
@@ -103,20 +88,39 @@ def build_index():
                 })
                 all_ids.append(f"{scheme_id}_raw_{idx}")
 
-    print(f"Embedding {len(all_documents)} chunks...")
-    embeddings = model.encode(all_documents, show_progress_bar=True, batch_size=32)
+    print(f"Embedding {len(all_documents)} chunks with {EMBEDDING_MODEL}...")
+    embeddings_list = []
+    batch_size = 32
 
-    print("Adding to ChromaDB...")
-    collection.add(
-        documents=all_documents,
-        embeddings=embeddings.tolist(),
-        metadatas=all_metadatas,
-        ids=all_ids
+    for i in range(0, len(all_documents), batch_size):
+        batch = all_documents[i:i + batch_size]
+        print(f"  Processing batch {i//batch_size + 1}/{(len(all_documents) + batch_size - 1)//batch_size}...")
+        result = client.models.embed_content(
+            model=EMBEDDING_MODEL,
+            contents=batch
+        )
+        for emb in result.embeddings:
+            embeddings_list.append(emb.values)
+
+    embeddings = np.array(embeddings_list, dtype=np.float32)
+    print(f"Embeddings shape: {embeddings.shape}")
+
+    # Normalize embeddings for cosine similarity
+    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+    embeddings = embeddings / np.maximum(norms, 1e-10)
+
+    # Save to index.npz
+    print(f"Saving index to {INDEX_FILE}...")
+    np.savez_compressed(
+        INDEX_FILE,
+        embeddings=embeddings,
+        documents=np.array(all_documents, dtype=object),
+        metadatas=np.array(all_metadatas, dtype=object),
+        ids=np.array(all_ids, dtype=object)
     )
 
     print(f"Index built successfully! Total chunks: {len(all_documents)}")
-    print(f"Collection: {COLLECTION_NAME}")
-    print(f"Persisted at: {CHROMA_DIR}")
+    print(f"Saved to: {INDEX_FILE}")
 
 
 if __name__ == "__main__":

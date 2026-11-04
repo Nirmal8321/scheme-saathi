@@ -43,14 +43,14 @@ Voice -> Speech-to-Text -> AI profile extractor -> Python rule engine
 | Part | Tool |
 |---|---|
 | Screen | Streamlit |
-| Backend | FastAPI, Uvicorn, Pydantic |
-| AI model | Google Gemini (Flash model, set in `.env`) |
-| Speech to text | faster-whisper |
+| AI model | Google Gemini (Flash model, set in `.env` / Streamlit Secrets) |
+| Speech to text | Gemini Audio Transcription |
 | Text to speech | gTTS |
-| Search | ChromaDB, sentence-transformers (multilingual) |
+| Search | Gemini Embeddings + NumPy Cosine Similarity |
 | PDF reading | PyMuPDF |
+| Rule engine | Pure Python (backend/rules.py) |
 
-## Setup
+## Setup (Local)
 
 ```bash
 python -m venv venv
@@ -68,20 +68,37 @@ copy .env.example .env         # Windows
 ```
 
 ```
-LLM_PROVIDER=gemini
+LLM_PROVIDER=google
 LLM_API_KEY=your_key_here
-LLM_MODEL=your_gemini_flash_model_name
-STT_MODEL=small
+LLM_MODEL=gemini-2.5-flash
+STT_MODEL=gemini-2.5-flash
 TTS_PROVIDER=gtts
-BACKEND_URL=http://localhost:8000
 ```
 
 Never commit `.env`. It is listed in `.gitignore`.
 
-## Run
+**For Streamlit Community Cloud:** Add the same keys in **Settings → Secrets** instead of `.env`:
+```toml
+LLM_PROVIDER = "google"
+LLM_API_KEY = "your_key_here"
+LLM_MODEL = "gemini-2.5-flash"
+STT_MODEL = "gemini-2.5-flash"
+TTS_PROVIDER = "gtts"
+```
 
-Terminal 1, backend:
+## Run (Single Process - Streamlit Community Cloud)
+
 ```bash
+streamlit run ui/app.py
+```
+
+The app starts the AI engine automatically on first load (builds index if needed, ~30s on first run).
+
+## Run (Local Development - Two Processes)
+
+Terminal 1, backend (optional, for API testing):
+```bash
+pip install -r requirements-dev.txt
 uvicorn backend.main:app --port 8000
 ```
 
@@ -108,8 +125,10 @@ Some tests call the AI and use free-tier quota, so run them sparingly.
 
 ```
 scheme-saathi/
-├── data/schemes.json     # scheme knowledge base (13 schemes, source link per scheme)
-├── backend/              # FastAPI routes, AI calls, rule engine, search, voice
+├── data/
+│   ├── schemes.json     # scheme knowledge base (13 schemes, source link per scheme)
+│   └── index.npz        # pre-computed Gemini embeddings (committed)
+├── backend/              # AI calls, rule engine, search, voice, PDF
 ├── ui/                   # Streamlit frontend
 └── tests/                # test scripts and sample users
 ```
@@ -118,12 +137,25 @@ scheme-saathi/
 
 The scheme data is curated from official government sources into `data/schemes.json`, with a source link and a last-verified date per scheme. It is a knowledge base, not a live government API. Scheme rules and amounts change over time, so re-verify before relying on them.
 
+The search index `data/index.npz` contains pre-computed Gemini embeddings for all scheme chunks. It is built with `python -m backend.build_index` and committed to the repo.
+
 ## Known limitations
 
 - Covers 13 schemes, with simplified rules.
-- Marathi speech recognition with small Whisper models is only fair.
+- Gemini audio transcription may have occasional errors.
 - The free AI quota is small, so heavy use can show "the AI is busy".
 - Guidance only. Always verify on the official portal before applying.
+
+## Deployment: Streamlit Community Cloud
+
+1. Fork this repo
+2. Go to https://share.streamlit.io/
+3. New app → select repo/branch
+4. Main file: `ui/app.py`
+5. Add secrets in **Settings → Secrets** (see Configuration above)
+6. Deploy
+
+Requirements: ~400 MB RAM (well under 1 GB limit). Single Streamlit process, no separate backend.
 
 ## Roadmap
 

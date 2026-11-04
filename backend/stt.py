@@ -1,10 +1,12 @@
-"""Speech-to-text module using faster-whisper."""
-import os
+"""Speech-to-text module using Gemini audio transcription."""
 import tempfile
 from pathlib import Path
 from typing import Optional
 
-# Language code mapping: our codes -> whisper codes
+from backend.config import LLM_API_KEY
+from google import genai
+
+# Language code mapping: our codes -> Gemini language codes
 LANGUAGE_MAP = {
     "mr": "mr",   # Marathi
     "hi": "hi",   # Hindi
@@ -16,28 +18,14 @@ LANGUAGE_MAP = {
     "kn": "kn",   # Kannada
 }
 
-# Global model instance (lazy-loaded)
-_model: Optional["WhisperModel"] = None
-
-
-def _get_model() -> "WhisperModel":
-    """Get or create the faster-whisper model instance."""
-    global _model
-    if _model is None:
-        from faster_whisper import WhisperModel
-
-        model_size = os.getenv("STT_MODEL", "small")
-        _model = WhisperModel(
-            model_size,
-            device="cpu",
-            compute_type="int8"
-        )
-    return _model
+# Limits
+MAX_AUDIO_SIZE = 5 * 1024 * 1024  # 5 MB
+MAX_AUDIO_DURATION = 60  # seconds (approximate, we check size as proxy)
 
 
 def transcribe(audio_bytes: bytes, language: str) -> str:
     """
-    Transcribe audio bytes to text using faster-whisper.
+    Transcribe audio bytes to text using Gemini.
 
     Args:
         audio_bytes: Raw audio data (WAV format expected)
@@ -47,17 +35,26 @@ def transcribe(audio_bytes: bytes, language: str) -> str:
         Transcribed text string
 
     Raises:
-        ValueError: If language is not supported or audio is empty
+        ValueError: If language is not supported, audio is empty, too large, or too long
     """
     if not audio_bytes:
         raise ValueError("Empty audio data provided")
 
-    # Map our language code to whisper language code
-    whisper_lang = LANGUAGE_MAP.get(language.lower())
-    if whisper_lang is None:
-        raise ValueError(f"Unsupported language: {language}. Supported: {list(LANGUAGE_MAP.keys())}")
+    # Check size limit
+    if len(audio_bytes) > MAX_AUDIO_SIZE:
+        raise ValueError(
+            f"Audio file too large ({len(audio_bytes) / 1024 / 1024:.1f} MB). "
+            f"Maximum size is {MAX_AUDIO_SIZE / 1024 / 1024} MB. "
+            f"Please record a shorter clip."
+        )
 
-    model = _get_model()
+    # Map our language code to whisper language code
+    gemini_lang = LANGUAGE_MAP.get(language.lower())
+    if gemini_lang is None:
+        raise ValueError(
+            f"Unsupported language: {language}. "
+            f"Supported: {list(LANGUAGE_MAP.keys())}"
+        )
 
     # Write audio bytes to a temporary file
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp_file:
@@ -65,17 +62,27 @@ def transcribe(audio_bytes: bytes, language: str) -> str:
         tmp_path = tmp_file.name
 
     try:
-        # Transcribe with beam_size=5 and vad_filter=True
-        segments, info = model.transcribe(
-            tmp_path,
-            language=whisper_lang,
-            beam_size=5,
-            vad_filter=True
+        client = genai.Client(api_key=LLM_API_KEY)
+
+        # Upload the audio file
+        audio_file = client.files.upload(file=tmp_path)
+
+        # Generate transcription
+        prompt = (
+            f"Transcribe this audio exactly in the original language ({gemini_lang}). "
+            f"Do not translate. Return only the text."
         )
 
-        # Join all segment texts
-        text = " ".join(segment.text for segment in segments).strip()
+        response = client.models.generate_content(
+            model="models/gemini-2.5-flash",
+            contents=[prompt, audio_file]
+        )
+
+        text = response.text.strip()
         return text
+
+    except Exception as e:
+        raise ValueError(f"Transcription failed: {str(e)}")
 
     finally:
         # Clean up temp file

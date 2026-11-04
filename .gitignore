@@ -31,3 +31,7 @@ server.log
 .env
 
 llm_cache/
+
+llm_cache/
+tts_cache/
+chroma_db/

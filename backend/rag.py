@@ -1,31 +1,25 @@
-"""RAG module - ChromaDB index building and scheme search."""
+"""RAG module - Gemini embeddings index building and scheme search."""
 import json
+import os
 from pathlib import Path
 from typing import List, Dict, Optional
 
-# Try to import heavy dependencies, fall back to mock if not available
-try:
-    import chromadb
-    from sentence_transformers import SentenceTransformer
-    HAS_CHROMA = True
-except ImportError:
-    HAS_CHROMA = False
+import numpy as np
 
 SCHEMES_FILE = Path(__file__).parent.parent / "data" / "schemes.json"
-CHROMA_DIR = Path(__file__).parent.parent / "chroma_db"
-COLLECTION_NAME = "schemes"
-EMBEDDING_MODEL = "paraphrase-multilingual-MiniLM-L12-v2"
+INDEX_FILE = Path(__file__).parent.parent / "data" / "index.npz"
 
-
-# Global model and client (lazy initialization)
-_model = None
-_client = None
-_collection = None
+# Module-level cache
 _schemes_cache = None
+_embeddings = None
+_documents = None
+_metadatas = None
+_ids = None
+_index_loaded = False
 
 
-def _load_schemes():
-    """Load and cache schemes for mock search."""
+def _load_schemes() -> List[Dict]:
+    """Load and cache schemes."""
     global _schemes_cache
     if _schemes_cache is None:
         with open(SCHEMES_FILE, "r", encoding="utf-8") as f:
@@ -33,9 +27,33 @@ def _load_schemes():
     return _schemes_cache
 
 
-def _mock_search(query: str, k: int = 6) -> List[Dict]:
+def _load_index():
+    """Load the index from index.npz file."""
+    global _embeddings, _documents, _metadatas, _ids, _index_loaded
+    if _index_loaded:
+        return
+
+    if not INDEX_FILE.exists():
+        print("Warning: index.npz not found. Run build_index.py first.")
+        _index_loaded = True
+        return
+
+    try:
+        data = np.load(INDEX_FILE, allow_pickle=True)
+        _embeddings = data["embeddings"]
+        _documents = data["documents"]
+        _metadatas = data["metadatas"]
+        _ids = data["ids"]
+        _index_loaded = True
+        print(f"Loaded index with {len(_embeddings)} chunks")
+    except Exception as e:
+        print(f"Warning: Failed to load index.npz: {e}")
+        _index_loaded = True
+
+
+def _keyword_search(query: str, k: int = 6) -> List[Dict]:
     """
-    Simple keyword-based mock search when chromadb is not available.
+    Simple keyword-based search as fallback.
     Scores based on keyword overlap with scheme raw_text and eligibility.
     """
     schemes = _load_schemes()
@@ -56,17 +74,13 @@ def _mock_search(query: str, k: int = 6) -> List[Dict]:
         text_words = set(searchable_text.split())
         overlap = len(query_words & text_words)
         if overlap > 0:
-            # Also check for specific keywords
             score = overlap * 0.1
-            # Boost for exact phrase matches
             for word in query_words:
                 if word in searchable_text:
                     score += 0.05
 
             if score > 0:
-                # Create a context chunk from raw_text
                 raw_text = scheme.get("raw_text", "")
-                # Take first 500 chars as context
                 context = raw_text[:500]
 
                 results.append({
@@ -74,29 +88,51 @@ def _mock_search(query: str, k: int = 6) -> List[Dict]:
                     "scheme_name": scheme["name"],
                     "text": context,
                     "score": min(score, 1.0),
-                    "chunk_type": "mock"
+                    "chunk_type": "keyword"
                 })
 
-    # Sort by score descending
     results.sort(key=lambda x: x["score"], reverse=True)
     return results[:k]
 
 
-def _get_model():
-    """Get or create the embedding model."""
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-    return _model
+def embed_query(query: str) -> Optional[np.ndarray]:
+    """Embed a query using Gemini embedding model. Uses disk cache for repeats."""
+    from backend.config import LLM_API_KEY
+    from google import genai
 
+    cache_dir = Path(__file__).parent.parent / "llm_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / f"embed_{hash(query)}.npy"
 
-def _get_collection():
-    """Get or create the ChromaDB collection."""
-    global _client, _collection
-    if _collection is None:
-        _client = chromadb.PersistentClient(path=str(CHROMA_DIR))
-        _collection = _client.get_collection(COLLECTION_NAME)
-    return _collection
+    # Check disk cache
+    if cache_file.exists():
+        try:
+            return np.load(cache_file)
+        except Exception:
+            pass
+
+    try:
+        client = genai.Client(api_key=LLM_API_KEY)
+        result = client.models.embed_content(
+            model="models/gemini-embedding-001",
+            contents=query
+        )
+        embedding = np.array(result.embeddings[0].values, dtype=np.float32)
+        # Normalize
+        norm = np.linalg.norm(embedding)
+        if norm > 0:
+            embedding = embedding / norm
+
+        # Save to cache
+        try:
+            np.save(cache_file, embedding)
+        except Exception:
+            pass
+
+        return embedding
+    except Exception as e:
+        print(f"Warning: Failed to embed query: {e}")
+        return None
 
 
 def search(query: str, k: int = 6) -> List[Dict]:
@@ -108,46 +144,36 @@ def search(query: str, k: int = 6) -> List[Dict]:
         k: Number of top results to return
 
     Returns:
-        List of dicts with scheme_id, text, score
+        List of dicts with scheme_id, scheme_name, text, score, chunk_type
     """
-    if HAS_CHROMA:
+    _load_index()
+
+    if _index_loaded and _embeddings is not None and len(_embeddings) > 0:
+        # Try vector search
         try:
-            model = _get_model()
-            collection = _get_collection()
+            query_emb = embed_query(query)
+            if query_emb is not None:
+                # Cosine similarity (embeddings are normalized)
+                scores = np.dot(_embeddings, query_emb)
+                top_indices = np.argsort(scores)[::-1][:k]
 
-            query_embedding = model.encode([query])[0].tolist()
+                output = []
+                for idx in top_indices:
+                    if scores[idx] > 0:
+                        meta = _metadatas[idx]
+                        output.append({
+                            "scheme_id": meta["scheme_id"],
+                            "scheme_name": meta["scheme_name"],
+                            "text": str(_documents[idx]),
+                            "score": float(scores[idx]),
+                            "chunk_type": meta.get("chunk_type", "unknown")
+                        })
+                return output
+        except Exception as e:
+            print(f"Vector search failed, falling back to keyword: {e}")
 
-            results = collection.query(
-                query_embeddings=[query_embedding],
-                n_results=k,
-                include=["documents", "metadatas", "distances"]
-            )
-
-            # Process results
-            output = []
-            if results["documents"] and results["documents"][0]:
-                for doc, meta, dist in zip(
-                    results["documents"][0],
-                    results["metadatas"][0],
-                    results["distances"][0]
-                ):
-                    # Convert distance to similarity score (cosine: 1 - distance)
-                    score = 1.0 - dist
-                    output.append({
-                        "scheme_id": meta["scheme_id"],
-                        "scheme_name": meta["scheme_name"],
-                        "text": doc,
-                        "score": score,
-                        "chunk_type": meta.get("chunk_type", "unknown")
-                    })
-
-            return output
-        except Exception:
-            # Fall back to mock if ChromaDB fails
-            pass
-
-    # Fallback to mock search
-    return _mock_search(query, k)
+    # Fallback to keyword search
+    return _keyword_search(query, k)
 
 
 def get_scheme(scheme_id: str) -> Optional[Dict]:
@@ -160,9 +186,7 @@ def get_scheme(scheme_id: str) -> Optional[Dict]:
     Returns:
         Full scheme dict or None if not found
     """
-    with open(SCHEMES_FILE, "r", encoding="utf-8") as f:
-        schemes = json.load(f)
-
+    schemes = _load_schemes()
     for scheme in schemes:
         if scheme["id"] == scheme_id:
             return scheme
@@ -176,9 +200,7 @@ def list_schemes() -> List[Dict]:
     Returns:
         List of scheme dicts with id, name, category, benefit
     """
-    with open(SCHEMES_FILE, "r", encoding="utf-8") as f:
-        schemes = json.load(f)
-
+    schemes = _load_schemes()
     return [
         {
             "id": s["id"],

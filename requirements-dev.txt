@@ -1,0 +1,5 @@
+# Development dependencies (for local API server)
+fastapi
+uvicorn
+python-multipart
+pytest
