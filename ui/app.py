@@ -1,7 +1,5 @@
 """Scheme Saathi - Streamlit UI."""
 import os
-import threading
-import time
 import streamlit as st
 from ui.api_client import analyze, stt, tts
 from ui.components import scheme_card, profile_box
@@ -10,54 +8,21 @@ from ui.components import scheme_card, profile_box
 os.makedirs("llm_cache", exist_ok=True)
 os.makedirs("tts_cache", exist_ok=True)
 
-
-@st.cache_resource
-def start_backend():
-    """Start FastAPI backend if not running, build index if needed."""
-    import requests
-
-    # Check if backend is already running
-    try:
-        resp = requests.get("http://127.0.0.1:8000/api/health", timeout=2)
-        if resp.status_code == 200:
-            return True
-    except Exception:
-        pass
-
-    # Build ChromaDB index if missing
-    chroma_path = "./chroma_db"
-    if not os.path.exists(chroma_path) or not os.listdir(chroma_path):
-        with st.spinner("Building knowledge base index..."):
-            from backend.build_index import build_index
-            build_index()
-
-    # Start FastAPI backend in daemon thread
-    def run_backend():
-        import uvicorn
-        config = uvicorn.Config("backend.main:app", host="127.0.0.1", port=8000, log_level="warning")
-        server = uvicorn.Server(config)
-        server.run()
-
-    thread = threading.Thread(target=run_backend, daemon=True)
-    thread.start()
-
-    # Wait for /api/health up to 90 seconds
-    with st.spinner("Starting the AI engine..."):
-        for _ in range(90):
-            try:
-                resp = requests.get("http://127.0.0.1:8000/api/health", timeout=2)
-                if resp.status_code == 200:
-                    return True
-            except Exception:
-                pass
-            time.sleep(1)
-
-    st.error("Backend failed to start. Please restart the app.")
-    return False
-
-
-# Initialize backend at startup
-start_backend()
+# Check for search index at startup
+INDEX_FILE = os.path.join(os.path.dirname(__file__), "..", "data", "index.npz")
+if not os.path.exists(INDEX_FILE):
+    st.error(
+        "❌ Search index not found: data/index.npz\n\n"
+        "The vector search index is missing. Please build it locally first:\n\n"
+        "```bash\n"
+        "pip install -r requirements-dev.txt\n"
+        "python -m backend.build_index\n"
+        "```\n\n"
+        "Then commit and push the generated data/index.npz file to the repository.\n"
+        "This index contains pre-computed Gemini embeddings for all scheme chunks "
+        "and is required for the search to work."
+    )
+    st.stop()
 
 
 # Page config - mobile friendly
