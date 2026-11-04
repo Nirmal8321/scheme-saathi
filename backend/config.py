@@ -3,31 +3,22 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file (for local development)
 load_dotenv()
 
 
 def _get_secret(key: str, default: str = "") -> str:
     """Get secret from Streamlit secrets first (for Cloud), fall back to env var (for local)."""
-    # Try Streamlit secrets first (Streamlit Community Cloud)
     try:
         import streamlit as st
         if hasattr(st, 'secrets') and key in st.secrets:
             return st.secrets[key]
     except Exception:
         pass
-
-    # Fall back to environment variable (local development with .env)
-    value = os.getenv(key)
-    if value:
-        return value
-
-    return default
+    return os.getenv(key, default)
 
 
 # LLM Configuration (from Streamlit secrets / env vars)
-LLM_PROVIDER = _get_secret("LLM_PROVIDER", "google")
-LLM_API_KEY = _get_secret("LLM_API_KEY", "")
+LLM_API_KEY = _get_secret("GEMINI_API_KEY", "")
 LLM_MODEL = _get_secret("LLM_MODEL", "gemini-2.5-flash")
 
 # App Configuration
@@ -42,8 +33,6 @@ TTS_PROVIDER = _get_secret("TTS_PROVIDER", "gtts")
 DATA_DIR = Path(__file__).parent.parent / "data"
 SCHEMES_FILE = DATA_DIR / "schemes.json"
 PDFS_DIR = DATA_DIR / "pdfs"
-
-# Index file
 INDEX_FILE = DATA_DIR / "index.npz"
 
 # Cache directories (created at runtime)
