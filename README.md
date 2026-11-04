@@ -1,4 +1,6 @@
 ---
+title: Scheme Saathi
+emoji: 🌾
 sdk: docker
 app_port: 7860
 ---
