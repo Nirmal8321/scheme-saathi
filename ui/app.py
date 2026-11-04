@@ -1,4 +1,7 @@
 """Scheme Saathi - Streamlit UI."""
+import sys, pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
 import os
 import streamlit as st
 from ui.api_client import analyze, stt, tts
